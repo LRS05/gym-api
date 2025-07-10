@@ -1,0 +1,70 @@
+package com.project.gym.controller;
+
+import com.project.gym.dto.MembershipRequestDTO;
+import com.project.gym.dto.MembershipResponseDTO;
+import com.project.gym.dto.PasswordRequestDTO;
+import com.project.gym.dto.UserResponseDTO;
+import com.project.gym.service.MembershipService;
+import com.project.gym.service.UserService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.security.Principal;
+import java.util.List;
+
+@Slf4j
+@RestController
+@RequiredArgsConstructor
+@RequestMapping("/api/v1/user")
+public class UserController
+{
+    private final UserService userService;
+    private final MembershipService membershipService;
+
+    @GetMapping
+    public ResponseEntity<UserResponseDTO> getMe()
+    {
+        return ResponseEntity.ok(userService.getUser());
+    }
+
+    @DeleteMapping
+    public ResponseEntity<String> deleteMe(@Valid @RequestBody PasswordRequestDTO requestDTO)
+    {
+        log.info("User attempts to delete their own account");
+        userService.deleteUser(requestDTO);
+        return ResponseEntity.ok("Account deleted successfully.");
+    }
+
+
+
+    /*
+
+        Membership Controllers
+
+     */
+
+
+    @PostMapping("/membership")
+    public ResponseEntity<MembershipResponseDTO> createMembership(Principal principal, @Valid @RequestBody MembershipRequestDTO requestDTO)
+    {
+        log.info("User with DNI {} attempts to create a membership of type {} with {} payment method", principal.getName(), requestDTO.type(), requestDTO.paymentMethod());
+        return ResponseEntity.status(HttpStatus.CREATED).body(membershipService.createMembership(principal.getName(), requestDTO));
+    }
+
+    @GetMapping("/memberships")
+    public ResponseEntity<List<MembershipResponseDTO>> getMemberships(Principal principal)
+    {
+        return ResponseEntity.ok(membershipService.getMembershipsByDni(principal.getName()));
+    }
+
+    @GetMapping("/membership/last")
+    public ResponseEntity<MembershipResponseDTO> getLastMembership(Principal principal)
+    {
+        return ResponseEntity.ok(membershipService.getLastMembershipByDni(principal.getName()));
+    }
+
+}

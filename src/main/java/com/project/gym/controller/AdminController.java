@@ -1,0 +1,128 @@
+package com.project.gym.controller;
+
+import com.project.gym.dto.*;
+import com.project.gym.service.AdminService;
+import com.project.gym.service.MembershipService;
+import com.project.gym.service.UserService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDate;
+import java.util.List;
+
+@Slf4j
+@RestController
+@RequiredArgsConstructor
+@RequestMapping("/api/v1/admin")
+public class AdminController
+{
+    private final AdminService adminService;
+    private final MembershipService membershipService;
+    private final UserService userService;
+
+    @GetMapping
+    public ResponseEntity<UserResponseDTO> getMe()
+    {
+        return ResponseEntity.ok(userService.getUser());
+    }
+
+    @GetMapping("/users")
+    public ResponseEntity<List<UserResponseDTO>> getUsers()
+    {
+        return ResponseEntity.ok(adminService.getUsers());
+    }
+
+    @GetMapping("/user/dni/{dni}")
+    public ResponseEntity<UserResponseDTO> getUserByDni(@PathVariable String dni)
+    {
+        return ResponseEntity.ok(adminService.getUserByDni(dni));
+    }
+
+    @PatchMapping("/user/dni/{dni}")
+    public ResponseEntity<UserResponseDTO> updateUserRole(@PathVariable String dni, @Valid @RequestBody RoleRequestDTO requestDTO)
+    {
+        log.info("Admin attempts to update a user with DNI {} to {} role.", dni, requestDTO.role());
+        return ResponseEntity.ok(adminService.updateUserRole(dni, requestDTO));
+    }
+
+    @DeleteMapping("/user/dni/{dni}")
+    public ResponseEntity<String> deleteUserByDni(@PathVariable String dni)
+    {
+        log.info("Admin attempts to delete a user with DNI {}", dni);
+        adminService.deleteUserByDni(dni);
+        return ResponseEntity.ok("User with DNI " + dni + " successfully deleted.");
+    }
+
+    @DeleteMapping("/user/{id}")
+    public ResponseEntity<String> deleteUserById(@PathVariable int id)
+    {
+        log.info("Admin attempts to delete a user with ID {}", id);
+        adminService.deleteUserById(id);
+        return ResponseEntity.ok("User with ID " + id + " successfully deleted.");
+    }
+
+
+
+    /*
+           Membership Controllers
+     */
+
+
+
+    @PostMapping("/membership/{dni}")
+    public ResponseEntity<MembershipResponseDTO> createMembership(@PathVariable String dni, @Valid @RequestBody MembershipRequestDTO requestDTO)
+    {
+        log.info("Admin attempts to create a membership for the user with DNI {}, {} type, {} payment method", dni, requestDTO.type(), requestDTO.paymentMethod());
+        return ResponseEntity.ok(membershipService.createMembership(dni, requestDTO));
+    }
+
+    @GetMapping("/memberships/date")
+    public ResponseEntity<List<MembershipResponseDTO>> getMembershipsByDate(@RequestParam LocalDate start, @RequestParam LocalDate end)
+    {
+        return ResponseEntity.ok(membershipService.getMembershipsByDate(start, end));
+    }
+
+    @GetMapping("/memberships/all/{dni}")
+    public ResponseEntity<List<MembershipResponseDTO>> getMembershipsByDni(@PathVariable String dni)
+    {
+        return ResponseEntity.ok(membershipService.getMembershipsByDni(dni));
+    }
+
+    @GetMapping("/membership/last/{dni}")
+    public ResponseEntity<MembershipResponseDTO> getLastMembershipByDni(@PathVariable String dni)
+    {
+        return ResponseEntity.ok(membershipService.getLastMembershipByDni(dni));
+    }
+
+    @GetMapping("/memberships/active")
+    public ResponseEntity<List<MembershipResponseDTO>> getActiveMemberships()
+    {
+        return ResponseEntity.ok(membershipService.getActiveMemberships());
+    }
+
+    @PatchMapping("/membership/{id}/status")
+    public ResponseEntity<MembershipResponseDTO> updateMembershipStatusById(@PathVariable int id, @Valid @RequestBody MembershipStatusRequestDTO requestDTO)
+    {
+        log.info("Admin attempts to update membership status for membership with ID {} to {}", id, requestDTO.status());
+        return ResponseEntity.ok(membershipService.updateMembershipStatusById(id, requestDTO));
+    }
+
+    @DeleteMapping("/membership/all/{dni}")
+    public ResponseEntity<String> deleteAllMembershipsByDni(@PathVariable String dni)
+    {
+        log.info("Admin attempts to delete all memberships with DNI {}", dni);
+        membershipService.deleteMembershipsByDni(dni);
+        return ResponseEntity.ok("Memberships with DNI " + dni + " successfully deleted.");
+    }
+
+    @DeleteMapping("/membership/{id}")
+    public ResponseEntity<String> deleteMembershipById(@PathVariable int id)
+    {
+        log.info("Admin attempts to delete membership with ID {}", id);
+        membershipService.deleteMembershipById(id);
+        return ResponseEntity.ok("Membership with id " + id + " successfully deleted.");
+    }
+}
