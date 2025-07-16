@@ -1,13 +1,13 @@
 package com.project.gym.dto;
 
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
 
 public record AuthRequestDTO(
 
-        @NotNull
+        @NotBlank(message = "Dni is required.")
         String dni,
 
-        @NotNull
+        @NotBlank(message = "Password is required.")
         String password
 ) {
 }

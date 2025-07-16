@@ -1,5 +1,6 @@
 package com.project.gym.service;
 
+import com.project.gym.config.CustomMetrics;
 import com.project.gym.dto.AuthRequestDTO;
 import com.project.gym.dto.RegisterRequestDTO;
 import com.project.gym.dto.TokenResponseDTO;
@@ -45,6 +46,9 @@ public class AuthServiceTest
 
     @Mock
     private HttpServletRequest httpServletRequest;
+
+    @Mock
+    private CustomMetrics customMetrics;
 
     @InjectMocks
     private AuthService authService;

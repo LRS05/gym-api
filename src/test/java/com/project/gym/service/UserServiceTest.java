@@ -1,5 +1,6 @@
 package com.project.gym.service;
 
+import com.project.gym.config.CustomMetrics;
 import com.project.gym.dto.PasswordRequestDTO;
 import com.project.gym.dto.UserResponseDTO;
 import com.project.gym.entity.UserEntity;
@@ -35,6 +36,9 @@ public class UserServiceTest
 
     @Mock
     private PasswordEncoder passwordEncoder;
+
+    @Mock
+    private CustomMetrics customMetrics;
 
     @InjectMocks
     private UserService userService;

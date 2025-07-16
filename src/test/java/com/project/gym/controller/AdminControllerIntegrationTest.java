@@ -240,7 +240,7 @@ public class AdminControllerIntegrationTest
     @WithMockUser(roles = "ADMIN", username = "46622977")
     void deleteUserByIdTest() throws Exception
     {
-        int id = 1;
+        int id = 2;
         mockMvc.perform(delete("/api/v1/admin/user/{id}", id))
                 .andExpect(status().isOk())
                 .andExpect(content().string("User with ID " + id + " successfully deleted."));
@@ -578,7 +578,7 @@ public class AdminControllerIntegrationTest
         String dni = "87654321";
         mockMvc.perform(delete("/api/v1/admin/membership/all/{dni}", dni))
                 .andExpect(status().isOk())
-                .andExpect(content().string("Memberships with DNI " + dni + " succesfully deleted."));
+                .andExpect(content().string("Memberships with DNI " + dni + " successfully deleted."));
     }
 
     @Test

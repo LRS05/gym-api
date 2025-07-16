@@ -5,7 +5,7 @@ import jakarta.validation.constraints.NotNull;
 
 public record MembershipStatusRequestDTO(
 
-        @NotNull
+        @NotNull(message = "Membership status is required.")
         MembershipStatus status
 ) {
 }

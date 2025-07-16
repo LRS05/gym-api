@@ -5,6 +5,7 @@ import com.project.gym.dto.MembershipRequestDTO;
 import com.project.gym.dto.PasswordRequestDTO;
 import com.project.gym.entity.enums.MembershipType;
 import com.project.gym.entity.enums.PaymentMethod;
+import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -20,6 +21,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @ActiveProfiles("test")
 @AutoConfigureMockMvc
+@Transactional
 public class UserControllerIntegrationTest
 {
     @Autowired
@@ -114,7 +116,7 @@ public class UserControllerIntegrationTest
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDTO)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.dni").value("87654321"))
+                .andExpect(jsonPath("$.user_dni").value("87654321"))
                 .andExpect(jsonPath("$.status").value("ACTIVE"))
                 .andExpect(jsonPath("$.type").value("ANNUALLY"))
                 .andExpect(jsonPath("$.payment_method").value("CARD"));
@@ -147,8 +149,8 @@ public class UserControllerIntegrationTest
         mockMvc.perform(get("/api/v1/user/memberships"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(2))
-                .andExpect(jsonPath("$[0].dni").value("87654321"))
-                .andExpect(jsonPath("$[1].dni").value("87654321"));
+                .andExpect(jsonPath("$[0].user_dni").value("87654321"))
+                .andExpect(jsonPath("$[1].user_dni").value("87654321"));
     }
 
     @Test
@@ -165,7 +167,7 @@ public class UserControllerIntegrationTest
     {
         mockMvc.perform(get("/api/v1/user/membership/last"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.dni").value("87654321"))
+                .andExpect(jsonPath("$.user_dni").value("87654321"))
                 .andExpect(jsonPath("$.type").value("ANNUALLY"))
                 .andExpect(jsonPath("$.payment_method").value("CARD"));
     }

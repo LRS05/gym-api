@@ -1,5 +1,6 @@
 package com.project.gym.service;
 
+import com.project.gym.config.CustomMetrics;
 import com.project.gym.dto.RoleRequestDTO;
 import com.project.gym.dto.UserResponseDTO;
 import com.project.gym.entity.UserEntity;
@@ -30,6 +31,9 @@ public class AdminServiceTest
 
     @Mock
     private UserMapper userMapper;
+
+    @Mock
+    private CustomMetrics customMetrics;
 
     @InjectMocks
     private AdminService adminService;
