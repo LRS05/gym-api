@@ -1,6 +1,5 @@
 package com.project.gym.config;
 
-import com.project.gym.entity.UserEntity;
 import com.project.gym.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;

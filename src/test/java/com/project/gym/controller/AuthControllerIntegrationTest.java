@@ -48,7 +48,7 @@ public class AuthControllerIntegrationTest
     {
         RegisterRequestDTO requestDTO = new RegisterRequestDTO(
                 "99999999",
-                "abc123",
+                "Abc123!!",
                 "Angelo",
                 "Rochista"
         );
@@ -80,7 +80,7 @@ public class AuthControllerIntegrationTest
     {
         RegisterRequestDTO requestDTO = new RegisterRequestDTO(
                 "46622977",
-                "gordomono",
+                "Gordomono8!",
                 "Lorenzo",
                 "Sarlo"
         );
