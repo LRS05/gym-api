@@ -25,7 +25,7 @@ public class GlobalExceptionHandler
     }
 
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<Object> handleAccessDenidException(AccessDeniedException e)
+    public ResponseEntity<Object> handleAccessDeniedException(AccessDeniedException e)
     {
         return new ResponseEntity<>(e.getMessage(), HttpStatus.FORBIDDEN);
     }
@@ -95,7 +95,7 @@ public class GlobalExceptionHandler
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Object> handleGenericException(Exception e)
     {
-        log.error("Unexpected error ocurred");
+        log.error("Unexpected error occurred");
         return new ResponseEntity<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 

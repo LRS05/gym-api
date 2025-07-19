@@ -7,13 +7,13 @@
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
 		<version>3.5.0</version>
-		<relativePath/> <!-- lookup parent from repository -->
+		<relativePath/>
 	</parent>
 
 	<groupId>com.project</groupId>
-	<artifactId>gym</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
-	<name>gym</name>
+	<artifactId>gym-api</artifactId>
+	<version>0.0.1</version>
+	<name>gym-api</name>
 	<description>API for a Gym</description>
 
 	<properties>
