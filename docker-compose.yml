@@ -16,7 +16,6 @@ services:
   mysql:
     container_name: gym-mysql
     image: mysql:8.0
-    restart: always
     environment:
       MYSQL_DATABASE: gym_db
       MYSQL_ROOT_PASSWORD: rootpassword
