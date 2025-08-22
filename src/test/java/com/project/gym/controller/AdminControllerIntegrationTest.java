@@ -144,12 +144,12 @@ public class AdminControllerIntegrationTest
 
     @Test
     @WithMockUser(roles = "ADMIN", username = "46622977")
-    void updateUserRoleTest() throws Exception
+    void updateUserRoleByDniTest() throws Exception
     {
         String dni = "87654321";
         RoleRequestDTO requestDTO = new RoleRequestDTO(Role.STAFF);
 
-        mockMvc.perform(patch("/api/v1/admin/user/dni/{dni}", dni)
+        mockMvc.perform(patch("/api/v1/admin/user/dni/{dni}/role", dni)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(requestDTO)))
                 .andExpect(status().isOk())
@@ -164,7 +164,7 @@ public class AdminControllerIntegrationTest
         String dni = "99999999";
         RoleRequestDTO requestDTO = new RoleRequestDTO(Role.STAFF);
 
-        mockMvc.perform(patch("/api/v1/admin/user/dni/{dni}", dni)
+        mockMvc.perform(patch("/api/v1/admin/user/dni/{dni}/role", dni)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDTO)))
                 .andExpect(status().isNotFound());
@@ -172,12 +172,12 @@ public class AdminControllerIntegrationTest
 
     @Test
     @WithMockUser(roles = "ADMIN", username = "46622977")
-    void updateUserRoleInvalidRequestTest() throws Exception
+    void updateUserRoleByDniInvalidDTOTest() throws Exception
     {
         String dni = "87654321";
         RoleRequestDTO requestDTO = new RoleRequestDTO(null);
 
-        mockMvc.perform(patch("/api/v1/admin/user/dni/{dni}", dni)
+        mockMvc.perform(patch("/api/v1/admin/user/dni/{dni}/role", dni)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDTO)))
                 .andExpect(status().isBadRequest());
@@ -207,7 +207,7 @@ public class AdminControllerIntegrationTest
         String dni = "87654321";
         mockMvc.perform(delete("/api/v1/admin/user/dni/{dni}", dni))
                 .andExpect(status().isOk())
-                .andExpect(content().string("User with DNI " + dni + " successfully deleted."));
+                .andExpect(content().string("User with dni " + dni + " successfully deleted."));
     }
 
     @Test
@@ -243,7 +243,7 @@ public class AdminControllerIntegrationTest
         int id = 2;
         mockMvc.perform(delete("/api/v1/admin/user/{id}", id))
                 .andExpect(status().isOk())
-                .andExpect(content().string("User with ID " + id + " successfully deleted."));
+                .andExpect(content().string("User with id " + id + " successfully deleted."));
     }
 
     @Test
@@ -399,7 +399,7 @@ public class AdminControllerIntegrationTest
     void getMembershipsByDniTest() throws Exception
     {
         String dni = "87654321";
-        mockMvc.perform(get("/api/v1/admin/memberships/all/{dni}", dni))
+        mockMvc.perform(get("/api/v1/admin/memberships/{dni}", dni))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(2))
                 .andExpect(jsonPath("$[0].user_dni").value(dni))
@@ -411,7 +411,7 @@ public class AdminControllerIntegrationTest
     void getMembershipsByDniEmptyListTest() throws Exception
     {
         String dni = "88888888";
-        mockMvc.perform(get("/api/v1/admin/memberships/all/{dni}", dni))
+        mockMvc.perform(get("/api/v1/admin/memberships/{dni}", dni))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(0));
     }
@@ -576,7 +576,7 @@ public class AdminControllerIntegrationTest
     void deleteAllMembershipsByDniTest() throws Exception
     {
         String dni = "87654321";
-        mockMvc.perform(delete("/api/v1/admin/membership/all/{dni}", dni))
+        mockMvc.perform(delete("/api/v1/admin/memberships/{dni}", dni))
                 .andExpect(status().isOk())
                 .andExpect(content().string("Memberships with DNI " + dni + " successfully deleted."));
     }
@@ -586,7 +586,7 @@ public class AdminControllerIntegrationTest
     void deleteAllMembershipsByDniEmptyListTest() throws Exception
     {
         String dni = "87654321";
-        mockMvc.perform(delete("/api/v1/admin/membership/all/{dni}", dni))
+        mockMvc.perform(delete("/api/v1/admin/memberships/{dni}", dni))
                 .andExpect(status().isOk());
     }
 

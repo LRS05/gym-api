@@ -335,7 +335,7 @@ public class StaffControllerIntegrationTest
     void getMembershipsByDniTest() throws Exception
     {
         String dni = "87654321";
-        mockMvc.perform(get("/api/v1/staff/membership/all/{dni}", dni))
+        mockMvc.perform(get("/api/v1/staff/memberships/{dni}", dni))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(2))
                 .andExpect(jsonPath("$[0].user_dni").value(dni))
@@ -347,7 +347,7 @@ public class StaffControllerIntegrationTest
     void getMembershipsByDniEmptyListTest() throws Exception
     {
         String dni = "88888888";
-        mockMvc.perform(get("/api/v1/staff/membership/all/{dni}", dni))
+        mockMvc.perform(get("/api/v1/staff/memberships/{dni}", dni))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(0));
     }
