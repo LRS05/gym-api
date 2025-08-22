@@ -34,8 +34,9 @@ public class AdminService
 
     public UserResponseDTO getUserByDni(String dni)
     {
-        UserEntity user = findUserByDniOrThrow(dni);
-        return userMapper.entityToDTO(user);
+        return userMapper.entityToDTO(
+                findUserByDniOrThrow(dni)
+        );
     }
 
     public UserResponseDTO updateUserRoleByDni(String dni, RoleRequestDTO requestDTO)
