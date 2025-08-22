@@ -5,7 +5,6 @@ import io.swagger.v3.oas.annotations.enums.SecuritySchemeIn;
 import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
 import io.swagger.v3.oas.annotations.info.Contact;
 import io.swagger.v3.oas.annotations.info.Info;
-import io.swagger.v3.oas.annotations.info.License;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.security.SecurityScheme;
 import io.swagger.v3.oas.annotations.servers.Server;
@@ -15,16 +14,9 @@ import org.springframework.http.HttpHeaders;
         info = @Info(
                 title = "API GYM",
                 description = "This API provides a solution to manage clients and memberships for a gym.",
-                termsOfService = "",
                 version = "1.0.0",
                 contact = @Contact(
-                        name = "Lorenzo Sarlo",
-                        url = "",
-                        email = ""
-                ),
-                license = @License(
-                        name = "",
-                        url = ""
+                        name = "Lorenzo Sarlo"
                 )
         ),
         servers = {
@@ -32,10 +24,6 @@ import org.springframework.http.HttpHeaders;
                         description = "DEV SERVER",
                         url = "http://localhost:8080"
                 ),
-                @Server(
-                        description = "PROD SERVER",
-                        url = "http://huracangym:8080"
-                )
         },
         security = @SecurityRequirement(
                 name = "Security Token"
