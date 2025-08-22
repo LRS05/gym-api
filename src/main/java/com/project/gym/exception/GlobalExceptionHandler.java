@@ -43,39 +43,17 @@ public class GlobalExceptionHandler
         return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
-    @ExceptionHandler(InvalidTokenException.class)
-    public ResponseEntity<Object> handleInvalidTokenException(InvalidTokenException e)
-    {
-        log.warn("Attempted to use a invalid or expired refresh token");
-        return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
-    }
-
     @ExceptionHandler(MembershipNotFoundException.class)
     public ResponseEntity<Object> handleMembershipNotFoundException(MembershipNotFoundException e)
     {
-        log.warn("Attempted to access a non-existent membership");
         return new ResponseEntity<>(e.getMessage(), HttpStatus.NOT_FOUND);
     }
 
     @ExceptionHandler(InvalidRoleUpdateException.class)
     public ResponseEntity<Object> handleInvalidRoleUpdateException(InvalidRoleUpdateException e)
     {
-        log.warn("Attempted to update another admin role");
+        log.warn("Attempted to update the role of an ADMIN");
         return new ResponseEntity<>(e.getMessage(), HttpStatus.FORBIDDEN);
-    }
-
-    @ExceptionHandler(ExpiredJwtException.class)
-    public ResponseEntity<Object> handleExpiredJwtException(ExpiredJwtException e)
-    {
-        log.warn("Attempted to use a expired token");
-        return new ResponseEntity<>(e.getMessage(), HttpStatus.UNAUTHORIZED);
-    }
-
-    @ExceptionHandler(MissingTokenException.class)
-    public ResponseEntity<Object> handleMissingTokenException(MissingTokenException e)
-    {
-        log.warn("Invalid authentication header: expected a bearer token");
-        return new ResponseEntity<>(e.getMessage(), HttpStatus.UNAUTHORIZED);
     }
 
     @ExceptionHandler(InvalidDeleteException.class)
@@ -106,22 +84,63 @@ public class GlobalExceptionHandler
         return new ResponseEntity<>(e.getMessage(), HttpStatus.UNAUTHORIZED);
     }
 
+    // Thrown when there are issues with the URL parameters.
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<Object> handleMethodArgumentMismatchException(MethodArgumentTypeMismatchException e)
     {
         return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
+    // Thrown when an invalid DTO is sent.
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Object> handleMethodArgumentNotValidException(MethodArgumentNotValidException e)
     {
         return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
+    // Thrown when the request body is invalid.
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<Object> handleHttpMessageNotReadableException(HttpMessageNotReadableException e)
     {
         return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+
+
+    /*
+
+       JWT Tokens Exceptions
+
+     */
+
+
+
+    @ExceptionHandler(MissingTokenException.class)
+    public ResponseEntity<Object> handleMissingTokenException(MissingTokenException e)
+    {
+        log.warn("Invalid authentication header: expected a JWT token");
+        return new ResponseEntity<>(e.getMessage(), HttpStatus.UNAUTHORIZED);
+    }
+
+    @ExceptionHandler(InvalidTokenException.class)
+    public ResponseEntity<Object> handleInvalidTokenException(InvalidTokenException e)
+    {
+        log.warn("Attempted to use a invalid or expired refresh token");
+        return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(ExpiredJwtException.class)
+    public ResponseEntity<Object> handleExpiredJwtException(ExpiredJwtException e)
+    {
+        log.warn("Attempted to use a expired token");
+        return new ResponseEntity<>(e.getMessage(), HttpStatus.UNAUTHORIZED);
+    }
+
+    @ExceptionHandler(InvalidTokenTypeException.class)
+    public ResponseEntity<Object> handleInvalidTokenTypeException(InvalidTokenTypeException e)
+    {
+        log.warn("Attempted to use access token to refresh");
+        return new ResponseEntity<>(e.getMessage(), HttpStatus.UNAUTHORIZED);
     }
 
 }
