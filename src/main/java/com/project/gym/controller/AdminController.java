@@ -72,7 +72,7 @@ public class AdminController
 
 
 
-    @PostMapping("/membership/{dni}")
+    @PostMapping("/membership/dni/{dni}")
     public ResponseEntity<MembershipResponseDTO> createMembership(@PathVariable String dni, @Valid @RequestBody MembershipRequestDTO requestDTO)
     {
         log.info("Attempting to create a membership for the user with dni={}, type={}, payment method={}", dni, requestDTO.type(), requestDTO.paymentMethod());
@@ -85,13 +85,13 @@ public class AdminController
         return ResponseEntity.ok(membershipService.getMembershipsByDate(start, end));
     }
 
-    @GetMapping("/memberships/{dni}")
+    @GetMapping("/memberships/dni/{dni}")
     public ResponseEntity<List<MembershipResponseDTO>> getMembershipsByDni(@PathVariable String dni)
     {
         return ResponseEntity.ok(membershipService.getMembershipsByDni(dni));
     }
 
-    @GetMapping("/membership/last/{dni}")
+    @GetMapping("/membership/dni/{dni}/last")
     public ResponseEntity<MembershipResponseDTO> getLastMembershipByDni(@PathVariable String dni)
     {
         return ResponseEntity.ok(membershipService.getLastMembershipByDni(dni));
@@ -110,12 +110,12 @@ public class AdminController
         return ResponseEntity.ok(membershipService.updateMembershipStatusById(id, requestDTO));
     }
 
-    @DeleteMapping("/memberships/{dni}")
+    @DeleteMapping("/memberships/dni/{dni}")
     public ResponseEntity<String> deleteMembershipsByDni(@PathVariable String dni)
     {
         log.info("Attempting to delete all the memberships with dni={}", dni);
         membershipService.deleteMembershipsByDni(dni);
-        return ResponseEntity.ok("Memberships with DNI " + dni + " successfully deleted.");
+        return ResponseEntity.ok("Memberships with dni " + dni + " successfully deleted.");
     }
 
     @DeleteMapping("/membership/{id}")

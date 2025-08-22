@@ -26,21 +26,21 @@ public class AuthController
     @PostMapping("/register")
     public ResponseEntity<TokenResponseDTO> register(@Valid @RequestBody RegisterRequestDTO requestDTO)
     {
-        log.info("New registration attempt with DNI {}", requestDTO.dni());
+        log.info("Attempting to register a new account with dni={}", requestDTO.dni());
         return ResponseEntity.status(HttpStatus.CREATED).body(authService.register(requestDTO));
     }
 
     @PostMapping("/login")
     public ResponseEntity<TokenResponseDTO> authenticate(@Valid @RequestBody AuthRequestDTO requestDTO)
     {
-        log.info("Authentication attempt with DNI {}", requestDTO.dni());
+        log.info("Attempting to authenticate with dni={}", requestDTO.dni());
         return ResponseEntity.ok(authService.authenticate(requestDTO));
     }
 
     @PostMapping("/refresh")
     public ResponseEntity<TokenResponseDTO> refresh(HttpServletRequest request)
     {
-        log.info("Attempts to refresh access token");
+        log.info("Attempting to refresh access token");
         return ResponseEntity.ok(authService.refresh(request));
     }
 }

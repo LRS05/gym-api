@@ -41,14 +41,14 @@ public class StaffController
     @GetMapping("/user/dni/{dni}")
     public ResponseEntity<UserResponseDTO> getUserByDni(@PathVariable String dni)
     {
-        log.info("Staff attempts to read the user with DNI {}", dni);
+        log.info("Attempting to read user with dni={}", dni);
         return ResponseEntity.ok(staffService.getUserByDni(dni));
     }
 
     @GetMapping("/user/{id}")
     public ResponseEntity<UserResponseDTO> getUserById(@PathVariable int id)
     {
-        log.info("Staff attempts to read the user with ID {}", id);
+        log.info("Attempting to read user with id={}", id);
         return ResponseEntity.ok(staffService.getUserById(id));
     }
 
@@ -62,10 +62,10 @@ public class StaffController
 
 
 
-    @PostMapping("/membership/{dni}")
+    @PostMapping("/membership/dni/{dni}")
     public ResponseEntity<MembershipResponseDTO> createMembership(@PathVariable String dni, @Valid @RequestBody MembershipRequestDTO requestDTO)
     {
-        log.info("Staff attempts to create a membership for the user with DNI {}, {} type, {} payment method", dni, requestDTO.type(), requestDTO.paymentMethod());
+        log.info("Attempting to create a membership for the user with dni={}, type={}, payment method={}", dni, requestDTO.type(), requestDTO.paymentMethod());
         return ResponseEntity.ok(membershipService.createMembership(dni, requestDTO));
     }
 
@@ -75,13 +75,13 @@ public class StaffController
         return ResponseEntity.ok(membershipService.getMembershipsByDate(start, end));
     }
 
-    @GetMapping("/membership/all/{dni}")
+    @GetMapping("/memberships/dni/{dni}")
     public ResponseEntity<List<MembershipResponseDTO>> getMembershipsByDni(@PathVariable String dni)
     {
         return ResponseEntity.ok(membershipService.getMembershipsByDni(dni));
     }
 
-    @GetMapping("/membership/last/{dni}")
+    @GetMapping("/membership/dni/{dni}/last")
     public ResponseEntity<MembershipResponseDTO> getLastMembershipByDni(@PathVariable String dni)
     {
         return ResponseEntity.ok(membershipService.getLastMembershipByDni(dni));
@@ -96,7 +96,7 @@ public class StaffController
     @PatchMapping("/membership/{id}/status")
     public ResponseEntity<MembershipResponseDTO> updateMembershipStatusById(@PathVariable int id, @Valid @RequestBody MembershipStatusRequestDTO requestDTO)
     {
-        log.info("Staff attempts to update membership status for membership with ID {} to {}", id, requestDTO.status());
+        log.info("Attempting to update membership with id={} to {}", id, requestDTO.status());
         return ResponseEntity.ok(membershipService.updateMembershipStatusById(id, requestDTO));
     }
 }
