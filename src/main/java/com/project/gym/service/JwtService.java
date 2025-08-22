@@ -29,12 +29,30 @@ public class JwtService
 
     public String generateAccessToken(UserEntity user)
     {
-        return buildToken(user, accessExpiration);
+        return buildToken(user, accessExpiration, "access");
     }
 
     public String generateRefreshToken(UserEntity user)
     {
-        return buildToken(user, refreshExpiration);
+        return buildToken(user, refreshExpiration, "refresh");
+    }
+
+    public boolean isRefreshToken(String token)
+    {
+        try
+        {
+            String type = Jwts.parser()
+                    .verifyWith(secretKey())
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload()
+                    .get("type", String.class);
+            return "refresh".equals(type);
+        }
+        catch (JwtException | IllegalArgumentException e)
+        {
+            return false;
+        }
     }
 
     public boolean isTokenValid(String token, UserEntity user)
@@ -70,13 +88,14 @@ public class JwtService
                 .getExpiration();
     }
 
-    private String buildToken(UserEntity user, long expiration)
+    private String buildToken(UserEntity user, long expiration, String tokenType)
     {
         return Jwts
                 .builder()
                 .id(UUID.randomUUID().toString())
                 .subject(user.getDni())
                 .claim("role", user.getRole())
+                .claim("type", tokenType)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(secretKey())
