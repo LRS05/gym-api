@@ -1,7 +1,7 @@
 package com.project.gym.service;
 
 import com.project.gym.entity.UserEntity;
-import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import lombok.AllArgsConstructor;
@@ -44,7 +44,7 @@ public class JwtService
             String tokenDni = extractSubject(token);
             return user.getDni().equals(tokenDni) && extractExpiration(token).after(new Date());
         }
-        catch (ExpiredJwtException e)
+        catch (JwtException e)
         {
             return false;
         }
