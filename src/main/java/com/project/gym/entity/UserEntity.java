@@ -1,5 +1,6 @@
 package com.project.gym.entity;
 
+import com.project.gym.entity.enums.Gender;
 import com.project.gym.entity.enums.Role;
 import jakarta.persistence.*;
 import lombok.*;
@@ -25,6 +26,9 @@ public class UserEntity implements UserDetails
 
     @Enumerated(EnumType.STRING)
     private Role role;
+
+    @Enumerated(EnumType.STRING)
+    private Gender gender;
 
     @Column(unique = true, nullable = false)
     private String dni;

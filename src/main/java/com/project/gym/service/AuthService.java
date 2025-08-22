@@ -43,6 +43,7 @@ public class AuthService
         UserEntity user = UserEntity
                 .builder()
                 .role(Role.USER)
+                .gender(requestDTO.gender())
                 .dni(requestDTO.dni())
                 .password(passwordEncoder.encode(requestDTO.password()))
                 .firstName(requestDTO.firstName())

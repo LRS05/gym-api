@@ -1,11 +1,16 @@
 package com.project.gym.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.project.gym.entity.enums.Gender;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public record RegisterRequestDTO(
+
+        @NotNull(message = "Gender is required.")
+        Gender gender,
 
         @NotBlank(message = "Dni is required.")
         @Pattern(regexp = "^[0-9]{7,8}$", message = "Dni must have 7 or 8 digits.")
