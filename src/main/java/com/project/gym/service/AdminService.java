@@ -11,7 +11,6 @@ import com.project.gym.mapper.UserMapper;
 import com.project.gym.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
@@ -28,20 +27,20 @@ public class AdminService
 
     public List<UserResponseDTO> getUsers()
     {
-        List<UserEntity> users = userRepository.findAll();
-        return userMapper.toDTO(users);
+        return userMapper.entityToDTO(
+                userRepository.findAll()
+        );
     }
 
     public UserResponseDTO getUserByDni(String dni)
     {
         UserEntity user = findUserByDniOrThrow(dni);
-        return userMapper.toDTO(user);
+        return userMapper.entityToDTO(user);
     }
 
-    public UserResponseDTO updateUserRole(String dni, RoleRequestDTO requestDTO)
+    public UserResponseDTO updateUserRoleByDni(String dni, RoleRequestDTO requestDTO)
     {
         UserEntity user = findUserByDniOrThrow(dni);
-
         if (user.getRole() == Role.ADMIN)
         {
             throw new InvalidRoleUpdateException("You cannot update other admins.");
@@ -50,22 +49,20 @@ public class AdminService
         user.setRole(requestDTO.role());
         UserEntity savedUser = userRepository.save(user);
 
-        log.info("Admin successfully updated user with DNI {} to {} role", dni, requestDTO.role());
-        return userMapper.toDTO(savedUser);
+        log.info("Updated user with dni={} to {}", dni, requestDTO.role());
+        return userMapper.entityToDTO(savedUser);
     }
 
     public void deleteUserByDni(String dni)
     {
         UserEntity user = findUserByDniOrThrow(dni);
 
-        if (user.getRole() == Role.ADMIN)
-        {
-            throw new InvalidDeleteException("You cannot delete other admins.");
-        }
+        validateUserNotAdminOrThrow(user);
 
         userRepository.delete(user);
         customMetrics.decrementUsers();
-        log.info("Admin deleted user with DNI {}", dni);
+
+        log.info("Deleted user with dni={}", dni);
     }
 
     public void deleteUserById(int id)
@@ -73,14 +70,12 @@ public class AdminService
         UserEntity user = userRepository.findById(id)
                         .orElseThrow(() -> new UsernameNotFoundException("User not found."));
 
-        if (user.getRole().equals(Role.ADMIN))
-        {
-            throw new InvalidDeleteException("You cannot delete other admins.");
-        }
+        validateUserNotAdminOrThrow(user);
 
         userRepository.delete(user);
         customMetrics.decrementUsers();
-        log.info("Admin deleted user with ID {}", id);
+
+        log.info("Deleted user with id={}", id);
     }
 
     private UserEntity findUserByDniOrThrow(String dni)
@@ -89,8 +84,11 @@ public class AdminService
                 .orElseThrow(() -> new UsernameNotFoundException("User not found."));
     }
 
-    private String getCurrentUser()
+    private void validateUserNotAdminOrThrow(UserEntity user)
     {
-        return SecurityContextHolder.getContext().getAuthentication().getName();
+        if (user.getRole() == Role.ADMIN)
+        {
+            throw new InvalidDeleteException("You cannot delete an ADMIN.");
+        }
     }
 }

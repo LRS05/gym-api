@@ -33,45 +33,52 @@ public class MembershipService
 
     public MembershipResponseDTO createMembership(String dni, MembershipRequestDTO requestDTO)
     {
-        MembershipEntity membership = buildMembership(dni, requestDTO);
-        MembershipEntity savedMembership = membershipRepository.save(membership);
+        MembershipEntity savedMembership = membershipRepository.save(
+                buildMembership(dni, requestDTO)
+        );
 
         customMetrics.incrementMemberships();
         customMetrics.incrementActiveMemberships();
-        log.info("Created membership for user with DNI: {}, Type: {}, Payment Method: {}", dni, requestDTO.type(), requestDTO.paymentMethod());
-        return membershipMapper.toDTO(savedMembership);
+
+        log.info("Created a membership for the user with dni={}, type={}, payment method={}", dni, requestDTO.type(), requestDTO.paymentMethod());
+        return membershipMapper.entityToDTO(savedMembership);
     }
 
     public List<MembershipResponseDTO> getMembershipsByDate(LocalDate start, LocalDate end)
     {
-        List<MembershipEntity> memberships = membershipRepository.findAllByPaymentDateBetween(start, end);
-        return membershipMapper.toDTO(memberships);
+        return membershipMapper.entityToDTO(
+                membershipRepository.findAllByPaymentDateBetween(start, end)
+        );
     }
 
     public MembershipResponseDTO getMembershipById(int id)
     {
-        MembershipEntity membership = membershipRepository.findById(id)
-                .orElseThrow(() -> new MembershipNotFoundException("Membership not found."));
-        return membershipMapper.toDTO(membership);
+        return membershipMapper.entityToDTO(
+                membershipRepository.findById(id)
+                        .orElseThrow(() -> new MembershipNotFoundException("Membership not found."))
+        );
     }
 
     public List<MembershipResponseDTO> getMembershipsByDni(String dni)
     {
-        List<MembershipEntity> memberships = membershipRepository.findAllByDni(dni);
-        return membershipMapper.toDTO(memberships);
+        return membershipMapper.entityToDTO(
+                membershipRepository.findAllByUserDni(dni)
+        );
     }
 
     public MembershipResponseDTO getLastMembershipByDni(String dni)
     {
-        MembershipEntity membership = membershipRepository.findFirstByDniOrderByPaymentDateDesc(dni)
-                .orElseThrow(() -> new MembershipNotFoundException("Membership not found."));
-        return membershipMapper.toDTO(membership);
+        return membershipMapper.entityToDTO(
+                membershipRepository.findFirstByUserDniOrderByPaymentDateDesc(dni)
+                        .orElseThrow(() -> new MembershipNotFoundException("Membership not found."))
+        );
     }
 
     public List<MembershipResponseDTO> getActiveMemberships()
     {
-        List<MembershipEntity> memberships = membershipRepository.findAllByStatus(MembershipStatus.ACTIVE);
-        return membershipMapper.toDTO(memberships);
+        return membershipMapper.entityToDTO(
+                membershipRepository.findAllByStatus(MembershipStatus.ACTIVE)
+        );
     }
 
     @Scheduled(cron = "0 0 12 * * ?")
@@ -82,7 +89,7 @@ public class MembershipService
 
         if (memberships.isEmpty())
         {
-            log.info("No memberships to deactivate today.");
+            log.info("No memberships to deactivate today");
             return;
         }
 
@@ -100,17 +107,17 @@ public class MembershipService
         MembershipEntity membership = membershipRepository.findById(id)
                 .orElseThrow(() -> new MembershipNotFoundException("Membership not found."));
 
-        if (membership.getStatus().equals(requestDTO.status()))
+        if (membership.getStatus() == requestDTO.status())
         {
-            log.info("Membership with ID {} was already in {} status, no update performed", id, requestDTO.status());
-            return membershipMapper.toDTO(membership);
+            log.info("Membership with id={} was already {}, no update performed", id, requestDTO.status());
+            return membershipMapper.entityToDTO(membership);
         }
 
         membership.setStatus(requestDTO.status());
-
         MembershipEntity updatedMembership = membershipRepository.save(membership);
-        log.info("Updated membership with ID {} to status {}", id, requestDTO.status());
-        return membershipMapper.toDTO(updatedMembership);
+
+        log.info("Updated membership with id={} to {}", id, requestDTO.status());
+        return membershipMapper.entityToDTO(updatedMembership);
     }
 
     public void deleteMembershipById(int id)
@@ -120,22 +127,24 @@ public class MembershipService
 
         membershipRepository.delete(membership);
 
-        if (membership.getStatus().equals(MembershipStatus.ACTIVE))
+        // Esto lo podemos meter en un metodo privado.
+        if (membership.getStatus() == MembershipStatus.ACTIVE)
         {
             customMetrics.decrementActiveMemberships();
         }
         customMetrics.decrementMemberships();
-        log.info("Deleted membership with ID {}", id);
+        log.info("Deleted membership with id={}", id);
     }
 
     public void deleteMembershipsByDni(String dni)
     {
-        List<MembershipEntity> memberships = membershipRepository.findAllByDni(dni);
+        List<MembershipEntity> memberships = membershipRepository.findAllByUserDni(dni);
 
         if (!memberships.isEmpty())
         {
             membershipRepository.deleteAll(memberships);
 
+            // Meter este bucle en un metodo privado (o el if).
             for (MembershipEntity m : memberships)
             {
                 if (m.getStatus().equals(MembershipStatus.ACTIVE))
@@ -145,15 +154,13 @@ public class MembershipService
                 customMetrics.decrementMemberships();
             }
         }
-        log.info("Deleted {} memberships for DNI {}",memberships.size(), dni);
+        log.info("Deleted {} memberships with user_dni={}",memberships.size(), dni);
     }
 
     private MembershipEntity buildMembership(String dni, MembershipRequestDTO requestDTO)
     {
-        UserEntity user = userRepository.findByDni(dni)
-                .orElse(null);
-
-        if (user != null && !user.getRole().equals(Role.USER))
+        UserEntity user = userRepository.findByDni(dni).orElse(null);
+        if (user != null && user.getRole() != Role.USER)
         {
             throw new InvalidMembershipAssignmentException("Only users with role USER can have a membership.");
         }
@@ -161,7 +168,7 @@ public class MembershipService
         return MembershipEntity
                 .builder()
                 .user(user)
-                .dni(dni)
+                .userDni(dni)
                 .status(MembershipStatus.ACTIVE)
                 .type(requestDTO.type())
                 .paymentMethod(requestDTO.paymentMethod())
