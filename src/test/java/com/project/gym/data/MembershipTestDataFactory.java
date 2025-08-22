@@ -17,7 +17,7 @@ public class MembershipTestDataFactory
                 .builder()
                 .id(1)
                 .user(UserTestDataFactory.userUser())
-                .dni("87654321")
+                .userDni("87654321")
                 .status(MembershipStatus.ACTIVE)
                 .type(MembershipType.ANNUALLY)
                 .paymentMethod(PaymentMethod.CARD)
@@ -32,7 +32,7 @@ public class MembershipTestDataFactory
                 .builder()
                 .id(2)
                 .user(null)
-                .dni("99999999")
+                .userDni("99999999")
                 .status(MembershipStatus.ACTIVE)
                 .type(MembershipType.MONTHLY)
                 .paymentMethod(PaymentMethod.CASH)
@@ -47,7 +47,7 @@ public class MembershipTestDataFactory
                 .builder()
                 .id(3)
                 .user(UserTestDataFactory.userUser())
-                .dni("87654321")
+                .userDni("87654321")
                 .status(MembershipStatus.ACTIVE)
                 .type(MembershipType.MONTHLY)
                 .paymentMethod(PaymentMethod.CASH)
@@ -90,11 +90,6 @@ public class MembershipTestDataFactory
         return entityToDTO(userNotRegisteredMembership());
     }
 
-    public static MembershipResponseDTO expiredMembershipDTO()
-    {
-        return entityToDTO(expiredMembership());
-    }
-
     public static List<MembershipEntity> defaultUserMemberships()
     {
         return List.of(userRegisteredMembership(), expiredMembership());
@@ -112,7 +107,7 @@ public class MembershipTestDataFactory
         return new MembershipResponseDTO(
                 membership.getId(),
                 membership.getUser() == null ? -1 : membership.getUser().getId(),
-                membership.getDni(),
+                membership.getUserDni(),
                 membership.getStatus(),
                 membership.getType(),
                 membership.getPaymentMethod(),

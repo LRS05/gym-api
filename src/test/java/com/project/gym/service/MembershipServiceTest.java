@@ -11,7 +11,6 @@ import com.project.gym.entity.enums.MembershipType;
 import com.project.gym.entity.enums.PaymentMethod;
 import com.project.gym.entity.enums.Role;
 import com.project.gym.exception.InvalidMembershipAssignmentException;
-import com.project.gym.exception.InvalidRoleUpdateException;
 import com.project.gym.exception.MembershipNotFoundException;
 import com.project.gym.mapper.MembershipMapper;
 import com.project.gym.repository.MembershipRepository;
@@ -67,7 +66,7 @@ public class MembershipServiceTest
         // When
         when(userRepository.findByDni(dni)).thenReturn(Optional.of(expectedUser));
         when(membershipRepository.save(any(MembershipEntity.class))).thenReturn(expectedMembership);
-        when(membershipMapper.toDTO(expectedMembership)).thenReturn(expectedDTO);
+        when(membershipMapper.entityToDTO(expectedMembership)).thenReturn(expectedDTO);
 
         ArgumentCaptor<MembershipEntity> captor = ArgumentCaptor.forClass(MembershipEntity.class);
         MembershipResponseDTO result = membershipService.createMembership(dni, requestDTO);
@@ -75,14 +74,14 @@ public class MembershipServiceTest
         // Then
         verify(userRepository).findByDni(dni);
         verify(membershipRepository).save(captor.capture());
-        verify(membershipMapper).toDTO(expectedMembership);
+        verify(membershipMapper).entityToDTO(expectedMembership);
 
         assertEquals(expectedUser, captor.getValue().getUser());
         assertEquals(expectedDTO, result);
         assertAll("membership",
                 () -> assertEquals(requestDTO.type(), result.type()),
                 () -> assertEquals(requestDTO.paymentMethod(), result.paymentMethod()),
-                () -> assertEquals(dni, result.dni())
+                () -> assertEquals(dni, result.userDni())
         );
     }
 
@@ -123,7 +122,7 @@ public class MembershipServiceTest
         // When
         when(userRepository.findByDni(dni)).thenReturn(Optional.empty());
         when(membershipRepository.save(any(MembershipEntity.class))).thenReturn(expectedMembersip);
-        when(membershipMapper.toDTO(expectedMembersip)).thenReturn(expectedDTO);
+        when(membershipMapper.entityToDTO(expectedMembersip)).thenReturn(expectedDTO);
 
         ArgumentCaptor<MembershipEntity> captor = ArgumentCaptor.forClass(MembershipEntity.class);
         MembershipResponseDTO result = membershipService.createMembership(dni, requestDTO);
@@ -131,14 +130,14 @@ public class MembershipServiceTest
         // Then
         verify(userRepository).findByDni(dni);
         verify(membershipRepository).save(captor.capture());
-        verify(membershipMapper).toDTO(expectedMembersip);
+        verify(membershipMapper).entityToDTO(expectedMembersip);
 
         assertNull(captor.getValue().getUser());
         assertEquals(expectedDTO, result);
         assertAll("membership",
                 () -> assertEquals(requestDTO.type(), result.type()),
                 () -> assertEquals(requestDTO.paymentMethod(), result.paymentMethod()),
-                () -> assertEquals(dni, result.dni()),
+                () -> assertEquals(dni, result.userDni()),
                 () -> assertNull(expectedMembersip.getUser())
         );
     }
@@ -154,13 +153,13 @@ public class MembershipServiceTest
 
         // When
         when(membershipRepository.findAllByPaymentDateBetween(start, end)).thenReturn(expectedMemberships);
-        when(membershipMapper.toDTO(expectedMemberships)).thenReturn(expectedDTOs);
+        when(membershipMapper.entityToDTO(expectedMemberships)).thenReturn(expectedDTOs);
 
         List<MembershipResponseDTO> result = membershipService.getMembershipsByDate(start, end);
 
         // Then
         verify(membershipRepository).findAllByPaymentDateBetween(start, end);
-        verify(membershipMapper).toDTO(expectedMemberships);
+        verify(membershipMapper).entityToDTO(expectedMemberships);
 
         assertEquals(expectedDTOs, result);
 
@@ -178,13 +177,13 @@ public class MembershipServiceTest
 
         // When
         when(membershipRepository.findAllByPaymentDateBetween(start, end)).thenReturn(new ArrayList<>());
-        when(membershipMapper.toDTO(anyList())).thenReturn(new ArrayList<>());
+        when(membershipMapper.entityToDTO(anyList())).thenReturn(new ArrayList<>());
 
         List<MembershipResponseDTO> result = membershipService.getMembershipsByDate(start, end);
 
         // Then
         verify(membershipRepository).findAllByPaymentDateBetween(start, end);
-        verify(membershipMapper).toDTO(anyList());
+        verify(membershipMapper).entityToDTO(anyList());
 
         assertTrue(result.isEmpty());
     }
@@ -199,13 +198,13 @@ public class MembershipServiceTest
 
         // When
         when(membershipRepository.findById(id)).thenReturn(Optional.of(expectedMembership));
-        when(membershipMapper.toDTO(expectedMembership)).thenReturn(expectedDTO);
+        when(membershipMapper.entityToDTO(expectedMembership)).thenReturn(expectedDTO);
 
         MembershipResponseDTO result = membershipService.getMembershipById(id);
 
         // Then
         verify(membershipRepository).findById(id);
-        verify(membershipMapper).toDTO(expectedMembership);
+        verify(membershipMapper).entityToDTO(expectedMembership);
 
         assertEquals(expectedDTO, result);
     }
@@ -234,18 +233,18 @@ public class MembershipServiceTest
         List<MembershipResponseDTO> expectedDTOs = MembershipTestDataFactory.defaultUserMembershipsDTO();
 
         // When
-        when(membershipRepository.findAllByDni(dni)).thenReturn(expectedMemberships);
-        when(membershipMapper.toDTO(expectedMemberships)).thenReturn(expectedDTOs);
+        when(membershipRepository.findAllByUserDni(dni)).thenReturn(expectedMemberships);
+        when(membershipMapper.entityToDTO(expectedMemberships)).thenReturn(expectedDTOs);
 
         List<MembershipResponseDTO> result = membershipService.getMembershipsByDni(dni);
 
         // Then
-        verify(membershipRepository).findAllByDni(dni);
-        verify(membershipMapper).toDTO(expectedMemberships);
+        verify(membershipRepository).findAllByUserDni(dni);
+        verify(membershipMapper).entityToDTO(expectedMemberships);
 
         assertEquals(expectedDTOs, result);
         assertTrue(result.stream().allMatch(m ->
-                m.dni().equals(dni)
+                m.userDni().equals(dni)
         ));
     }
 
@@ -256,14 +255,14 @@ public class MembershipServiceTest
         String dni = "88888888";
 
         // When
-        when(membershipRepository.findAllByDni(dni)).thenReturn(new ArrayList<>());
-        when(membershipMapper.toDTO(anyList())).thenReturn(new ArrayList<>());
+        when(membershipRepository.findAllByUserDni(dni)).thenReturn(new ArrayList<>());
+        when(membershipMapper.entityToDTO(anyList())).thenReturn(new ArrayList<>());
 
         List<MembershipResponseDTO> result = membershipService.getMembershipsByDni(dni);
 
         // Then
-        verify(membershipRepository).findAllByDni(dni);
-        verify(membershipMapper).toDTO(anyList());
+        verify(membershipRepository).findAllByUserDni(dni);
+        verify(membershipMapper).entityToDTO(anyList());
 
         assertTrue(result.isEmpty());
     }
@@ -277,14 +276,14 @@ public class MembershipServiceTest
         MembershipResponseDTO expectedDTO = MembershipTestDataFactory.userNotRegisteredMembershipDTO();
 
         // When
-        when(membershipRepository.findFirstByDniOrderByPaymentDateDesc(dni)).thenReturn(Optional.of(expectedMembership));
-        when(membershipMapper.toDTO(expectedMembership)).thenReturn(expectedDTO);
+        when(membershipRepository.findFirstByUserDniOrderByPaymentDateDesc(dni)).thenReturn(Optional.of(expectedMembership));
+        when(membershipMapper.entityToDTO(expectedMembership)).thenReturn(expectedDTO);
 
         MembershipResponseDTO result = membershipService.getLastMembershipByDni(dni);
 
         // Then
-        verify(membershipRepository).findFirstByDniOrderByPaymentDateDesc(dni);
-        verify(membershipMapper).toDTO(expectedMembership);
+        verify(membershipRepository).findFirstByUserDniOrderByPaymentDateDesc(dni);
+        verify(membershipMapper).entityToDTO(expectedMembership);
 
         assertEquals(expectedDTO, result);
     }
@@ -296,11 +295,11 @@ public class MembershipServiceTest
         String dni = "88888888";
 
         // When
-        when(membershipRepository.findFirstByDniOrderByPaymentDateDesc(dni)).thenReturn(Optional.empty());
+        when(membershipRepository.findFirstByUserDniOrderByPaymentDateDesc(dni)).thenReturn(Optional.empty());
         assertThrows(MembershipNotFoundException.class, () -> membershipService.getLastMembershipByDni(dni));
 
         // Then
-        verify(membershipRepository).findFirstByDniOrderByPaymentDateDesc(dni);
+        verify(membershipRepository).findFirstByUserDniOrderByPaymentDateDesc(dni);
     }
 
     @Test
@@ -312,13 +311,13 @@ public class MembershipServiceTest
 
         // When
         when(membershipRepository.findAllByStatus(MembershipStatus.ACTIVE)).thenReturn(expectedMemberships);
-        when(membershipMapper.toDTO(expectedMemberships)).thenReturn(expectedDTOs);
+        when(membershipMapper.entityToDTO(expectedMemberships)).thenReturn(expectedDTOs);
 
         List<MembershipResponseDTO> result = membershipService.getActiveMemberships();
 
         // Then
         verify(membershipRepository).findAllByStatus(MembershipStatus.ACTIVE);
-        verify(membershipMapper).toDTO(expectedMemberships);
+        verify(membershipMapper).entityToDTO(expectedMemberships);
 
         assertEquals(expectedDTOs, result);
         assertTrue(result.stream().allMatch(m ->
@@ -331,13 +330,13 @@ public class MembershipServiceTest
     {
         // When
         when(membershipRepository.findAllByStatus(MembershipStatus.ACTIVE)).thenReturn(new ArrayList<>());
-        when(membershipMapper.toDTO(anyList())).thenReturn(new ArrayList<>());
+        when(membershipMapper.entityToDTO(anyList())).thenReturn(new ArrayList<>());
 
         List<MembershipResponseDTO> result = membershipService.getActiveMemberships();
 
         // Then
         verify(membershipRepository).findAllByStatus(MembershipStatus.ACTIVE);
-        verify(membershipMapper).toDTO(anyList());
+        verify(membershipMapper).entityToDTO(anyList());
 
         assertTrue(result.isEmpty());
     }
@@ -491,18 +490,18 @@ public class MembershipServiceTest
         );
 
         // When
-        when(membershipRepository.findAllByDni(dni)).thenReturn(expectedMemberships);
+        when(membershipRepository.findAllByUserDni(dni)).thenReturn(expectedMemberships);
 
         ArgumentCaptor<List<MembershipEntity>> captor = ArgumentCaptor.forClass(List.class);
         membershipService.deleteMembershipsByDni(dni);
 
         // Then
-        verify(membershipRepository).findAllByDni(dni);
+        verify(membershipRepository).findAllByUserDni(dni);
         verify(membershipRepository).deleteAll(captor.capture());
 
         assertEquals(expectedMemberships, captor.getValue());
         assertTrue(captor.getValue().stream().allMatch(m ->
-                m.getDni().equals(dni)
+                m.getUserDni().equals(dni)
         ));
     }
 
@@ -513,12 +512,12 @@ public class MembershipServiceTest
         String dni = "99999999";
 
         // When
-        when(membershipRepository.findAllByDni(dni)).thenReturn(new ArrayList<>());
+        when(membershipRepository.findAllByUserDni(dni)).thenReturn(new ArrayList<>());
 
         membershipService.deleteMembershipsByDni(dni);
 
         // Then
-        verify(membershipRepository).findAllByDni(dni);
+        verify(membershipRepository).findAllByUserDni(dni);
         verifyNoMoreInteractions(membershipRepository);
     }
 }
