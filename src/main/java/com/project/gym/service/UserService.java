@@ -27,7 +27,7 @@ public class UserService
     public UserResponseDTO getUser()
     {
         UserEntity user = findCurrentUserOrThrow();
-        return userMapper.toDTO(user);
+        return userMapper.entityToDTO(user);
     }
 
     public void deleteUser(PasswordRequestDTO requestDTO)

@@ -52,13 +52,13 @@ public class StaffServiceTest
 
         // When
         when(userRepository.findAllByRole(Role.USER)).thenReturn(expectedUsers);
-        when(userMapper.toDTO(expectedUsers)).thenReturn(expectedDTOs);
+        when(userMapper.entityToDTO(expectedUsers)).thenReturn(expectedDTOs);
 
         List<UserResponseDTO> result = staffService.getUsers();
 
         // Then
         verify(userRepository).findAllByRole(Role.USER);
-        verify(userMapper).toDTO(expectedUsers);
+        verify(userMapper).entityToDTO(expectedUsers);
 
         assertEquals(expectedDTOs, result);
     }
@@ -69,13 +69,13 @@ public class StaffServiceTest
 
         // When
         when(userRepository.findAllByRole(Role.USER)).thenReturn(new ArrayList<>());
-        when(userMapper.toDTO(anyList())).thenReturn(new ArrayList<>());
+        when(userMapper.entityToDTO(anyList())).thenReturn(new ArrayList<>());
 
         List<UserResponseDTO> result = staffService.getUsers();
 
         // Then
         verify(userRepository).findAllByRole(Role.USER);
-        verify(userMapper).toDTO(anyList());
+        verify(userMapper).entityToDTO(anyList());
 
         assertTrue(result.isEmpty());
     }
@@ -90,13 +90,13 @@ public class StaffServiceTest
 
         // When
         when(userRepository.findByDni(dni)).thenReturn(Optional.of(expectedUser));
-        when(userMapper.toDTO(expectedUser)).thenReturn(expectedDTO);
+        when(userMapper.entityToDTO(expectedUser)).thenReturn(expectedDTO);
 
         UserResponseDTO result = staffService.getUserByDni(dni);
 
         // Then
         verify(userRepository).findByDni(dni);
-        verify(userMapper).toDTO(expectedUser);
+        verify(userMapper).entityToDTO(expectedUser);
 
         assertEquals(Role.USER, result.role());
         assertEquals(expectedDTO, result);
@@ -143,13 +143,13 @@ public class StaffServiceTest
 
         // When
         when(userRepository.findById(id)).thenReturn(Optional.of(expectedUser));
-        when(userMapper.toDTO(expectedUser)).thenReturn(expectedDTO);
+        when(userMapper.entityToDTO(expectedUser)).thenReturn(expectedDTO);
 
         UserResponseDTO result = staffService.getUserById(id);
 
         // Then
         verify(userRepository).findById(id);
-        verify(userMapper).toDTO(expectedUser);
+        verify(userMapper).entityToDTO(expectedUser);
 
         assertEquals(Role.USER, result.role());
         assertEquals(expectedDTO, result);

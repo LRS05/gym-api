@@ -37,9 +37,6 @@ public class UserServiceTest
     @Mock
     private PasswordEncoder passwordEncoder;
 
-    @Mock
-    private CustomMetrics customMetrics;
-
     @InjectMocks
     private UserService userService;
 
@@ -63,13 +60,13 @@ public class UserServiceTest
 
         // When
         when(userRepository.findByDni(dni)).thenReturn(Optional.of(expectedUser));
-        when(userMapper.toDTO(expectedUser)).thenReturn(expectedDTO);
+        when(userMapper.entityToDTO(expectedUser)).thenReturn(expectedDTO);
 
         UserResponseDTO result = userService.getUser();
 
         // Then
         verify(userRepository).findByDni(dni);
-        verify(userMapper).toDTO(expectedUser);
+        verify(userMapper).entityToDTO(expectedUser);
 
         assertEquals(expectedDTO, result);
     }

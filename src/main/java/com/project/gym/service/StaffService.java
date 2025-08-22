@@ -24,7 +24,7 @@ public class StaffService
     public List<UserResponseDTO> getUsers()
     {
         List<UserEntity> users = userRepository.findAllByRole(Role.USER);
-        return userMapper.toDTO(users);
+        return userMapper.entityToDTO(users);
     }
 
     public UserResponseDTO getUserByDni(String dni)
@@ -37,7 +37,7 @@ public class StaffService
             log.warn("Attempted to modify a non-USER user.");
             throw new AccessDeniedException("You are not allowed to update this user.");
         }
-        return userMapper.toDTO(user);
+        return userMapper.entityToDTO(user);
     }
 
     public UserResponseDTO getUserById(int id)
@@ -50,6 +50,6 @@ public class StaffService
             log.warn("Attempted to read a non-USER user.");
             throw new AccessDeniedException("You are not allowed to see this user.");
         }
-        return userMapper.toDTO(user);
+        return userMapper.entityToDTO(user);
     }
 }

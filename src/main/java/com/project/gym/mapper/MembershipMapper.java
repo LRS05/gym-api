@@ -11,8 +11,8 @@ import java.util.List;
 public interface MembershipMapper
 {
     @Mapping(source = "user.id", target = "userId")
-    MembershipResponseDTO toDTO(MembershipEntity membership);
+    MembershipResponseDTO entityToDTO(MembershipEntity membership);
 
     @Mapping(source = "user.id", target = "userId")
-    List<MembershipResponseDTO> toDTO(List<MembershipEntity> membership);
+    List<MembershipResponseDTO> entityToDTO(List<MembershipEntity> membership);
 }

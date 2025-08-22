@@ -32,9 +32,6 @@ public class AdminServiceTest
     @Mock
     private UserMapper userMapper;
 
-    @Mock
-    private CustomMetrics customMetrics;
-
     @InjectMocks
     private AdminService adminService;
 
@@ -47,13 +44,13 @@ public class AdminServiceTest
 
         // When
         when(userRepository.findAll()).thenReturn(expectedUsers);
-        when(userMapper.toDTO(expectedUsers)).thenReturn(expectedDTOs);
+        when(userMapper.entityToDTO(expectedUsers)).thenReturn(expectedDTOs);
 
         List<UserResponseDTO> result = adminService.getUsers();
 
         // Then
         verify(userRepository).findAll();
-        verify(userMapper).toDTO(expectedUsers);
+        verify(userMapper).entityToDTO(expectedUsers);
         assertEquals(expectedDTOs, result);
     }
 
@@ -62,13 +59,13 @@ public class AdminServiceTest
     {
         // When
         when(userRepository.findAll()).thenReturn(new ArrayList<>());
-        when(userMapper.toDTO(anyList())).thenReturn(new ArrayList<>());
+        when(userMapper.entityToDTO(anyList())).thenReturn(new ArrayList<>());
 
         List<UserResponseDTO> result = adminService.getUsers();
 
         // Then
         verify(userRepository).findAll();
-        verify(userMapper).toDTO(anyList());
+        verify(userMapper).entityToDTO(anyList());
         assertTrue(result.isEmpty());
     }
 
@@ -82,13 +79,13 @@ public class AdminServiceTest
 
         // When
         when(userRepository.findByDni(dni)).thenReturn(Optional.of(expectedUser));
-        when(userMapper.toDTO(expectedUser)).thenReturn(expectedDTO);
+        when(userMapper.entityToDTO(expectedUser)).thenReturn(expectedDTO);
 
         UserResponseDTO result = adminService.getUserByDni(dni);
 
         // Then
         verify(userRepository).findByDni(dni);
-        verify(userMapper).toDTO(expectedUser);
+        verify(userMapper).entityToDTO(expectedUser);
 
         assertEquals(expectedDTO, result);
     }
@@ -123,15 +120,15 @@ public class AdminServiceTest
         // When
         when(userRepository.findByDni(dni)).thenReturn(Optional.of(expectedUser));
         when(userRepository.save(any(UserEntity.class))).thenReturn(expectedUserUpdated);
-        when(userMapper.toDTO(expectedUserUpdated)).thenReturn(expectedUserUpdatedDTO);
+        when(userMapper.entityToDTO(expectedUserUpdated)).thenReturn(expectedUserUpdatedDTO);
 
         ArgumentCaptor<UserEntity> captor = ArgumentCaptor.forClass(UserEntity.class);
-        UserResponseDTO result = adminService.updateUserRole(dni, requestDTO);
+        UserResponseDTO result = adminService.updateUserRoleByDni(dni, requestDTO);
 
         // Then
         verify(userRepository).findByDni(dni);
         verify(userRepository).save(captor.capture());
-        verify(userMapper).toDTO(captor.capture());
+        verify(userMapper).entityToDTO(captor.capture());
 
         assertEquals(expectedUserUpdated, captor.getValue());
         assertEquals(expectedUserUpdatedDTO, result);
@@ -147,7 +144,7 @@ public class AdminServiceTest
         // When
         when(userRepository.findByDni(dni)).thenReturn(Optional.empty());
 
-        assertThrows(UsernameNotFoundException.class, () -> adminService.updateUserRole(dni, requestDTO));
+        assertThrows(UsernameNotFoundException.class, () -> adminService.updateUserRoleByDni(dni, requestDTO));
 
         // Then
         verify(userRepository).findByDni(dni);
