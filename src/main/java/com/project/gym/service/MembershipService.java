@@ -37,8 +37,7 @@ public class MembershipService
                 buildMembership(dni, requestDTO)
         );
 
-        customMetrics.incrementMemberships();
-        customMetrics.incrementActiveMemberships();
+        incrementMembershipMetrics();
 
         log.info("Created a membership for the user with dni={}, type={}, payment method={}", dni, requestDTO.type(), requestDTO.paymentMethod());
         return membershipMapper.entityToDTO(savedMembership);
@@ -89,17 +88,17 @@ public class MembershipService
 
         if (memberships.isEmpty())
         {
-            log.info("No memberships to deactivate today");
+            log.info("SERVER: No memberships to deactivate today");
             return;
         }
 
-        memberships.forEach(m ->
-        {
+        memberships.forEach(m -> {
             m.setStatus(MembershipStatus.INACTIVE);
             customMetrics.decrementActiveMemberships();
         });
+
         membershipRepository.saveAll(memberships);
-        log.info("Deactivated {} memberships", memberships.size());
+        log.info("SERVER: Deactivated {} memberships today", memberships.size());
     }
 
     public MembershipResponseDTO updateMembershipStatusById(int id, MembershipStatusRequestDTO requestDTO)
@@ -115,6 +114,7 @@ public class MembershipService
 
         membership.setStatus(requestDTO.status());
         MembershipEntity updatedMembership = membershipRepository.save(membership);
+        updateActiveMembershipMetrics(requestDTO.status());
 
         log.info("Updated membership with id={} to {}", id, requestDTO.status());
         return membershipMapper.entityToDTO(updatedMembership);
@@ -124,15 +124,8 @@ public class MembershipService
     {
         MembershipEntity membership = membershipRepository.findById(id)
                 .orElseThrow(() -> new MembershipNotFoundException("Membership not found."));
-
         membershipRepository.delete(membership);
-
-        // Esto lo podemos meter en un metodo privado.
-        if (membership.getStatus() == MembershipStatus.ACTIVE)
-        {
-            customMetrics.decrementActiveMemberships();
-        }
-        customMetrics.decrementMemberships();
+        decrementMembershipMetrics(membership);
         log.info("Deleted membership with id={}", id);
     }
 
@@ -143,16 +136,7 @@ public class MembershipService
         if (!memberships.isEmpty())
         {
             membershipRepository.deleteAll(memberships);
-
-            // Meter este bucle en un metodo privado (o el if).
-            for (MembershipEntity m : memberships)
-            {
-                if (m.getStatus().equals(MembershipStatus.ACTIVE))
-                {
-                    customMetrics.decrementActiveMemberships();
-                }
-                customMetrics.decrementMemberships();
-            }
+            decrementMembershipsMetrics(memberships);
         }
         log.info("Deleted {} memberships with user_dni={}",memberships.size(), dni);
     }
@@ -176,4 +160,42 @@ public class MembershipService
                 .nextPaymentDate(LocalDate.now().plusMonths(requestDTO.type().getDuration()))
                 .build();
     }
+
+    private void incrementMembershipMetrics()
+    {
+        customMetrics.incrementActiveMemberships();
+        customMetrics.incrementMemberships();
+    }
+
+    private void decrementMembershipsMetrics(List<MembershipEntity> memberships)
+    {
+        for (MembershipEntity m : memberships)
+        {
+            if (m.getStatus() == MembershipStatus.ACTIVE)
+            {
+                customMetrics.decrementActiveMemberships();
+            }
+            customMetrics.decrementMemberships();
+        }
+    }
+
+    private void decrementMembershipMetrics(MembershipEntity membership)
+    {
+        if (membership.getStatus() == MembershipStatus.ACTIVE)
+        {
+            customMetrics.decrementActiveMemberships();
+        }
+        customMetrics.decrementMemberships();
+    }
+
+    private void updateActiveMembershipMetrics(MembershipStatus status)
+    {
+        if (status == MembershipStatus.ACTIVE)
+        {
+            customMetrics.incrementActiveMemberships();
+            return;
+        }
+        customMetrics.decrementActiveMemberships();
+    }
+
 }
