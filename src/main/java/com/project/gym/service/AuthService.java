@@ -6,6 +6,7 @@ import com.project.gym.dto.RegisterRequestDTO;
 import com.project.gym.dto.TokenResponseDTO;
 import com.project.gym.entity.UserEntity;
 import com.project.gym.entity.enums.Role;
+import com.project.gym.exception.InvalidTokenTypeException;
 import com.project.gym.exception.UserAlreadyRegisteredException;
 import com.project.gym.exception.InvalidTokenException;
 import com.project.gym.exception.MissingTokenException;
@@ -63,6 +64,7 @@ public class AuthService
 
     public TokenResponseDTO authenticate(AuthRequestDTO requestDTO)
     {
+        // Can throws BadCredentialsException or UsernameNotFoundException
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(requestDTO.dni(), requestDTO.password())
         );
@@ -85,6 +87,11 @@ public class AuthService
         }
 
         String refreshToken = authHeader.substring(7);
+        if (!jwtService.isRefreshToken(refreshToken))
+        {
+            throw new InvalidTokenTypeException("Invalid token type.");
+        }
+
         String dni = jwtService.extractSubject(refreshToken);
 
         UserEntity user = findUserByDniOrThrow(dni);
@@ -93,7 +100,7 @@ public class AuthService
             throw new InvalidTokenException("Invalid or expired refresh token.");
         }
 
-        log.info("Access token refreshed successfully");
+        log.info("Successfully refreshed access token");
         return new TokenResponseDTO(
                 jwtService.generateAccessToken(user),
                 null
