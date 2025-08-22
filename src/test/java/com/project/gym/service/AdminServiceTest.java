@@ -32,6 +32,9 @@ public class AdminServiceTest
     @Mock
     private UserMapper userMapper;
 
+    @Mock
+    private CustomMetrics customMetrics;
+
     @InjectMocks
     private AdminService adminService;
 
