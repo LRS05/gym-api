@@ -51,7 +51,7 @@ public class AuthService
                 .build();
 
         UserEntity savedUser = userRepository.save(user);
-        log.info("Successfully registered a new account with DNI {}", requestDTO.dni());
+        log.info("Successfully registered a new account with dni={}", requestDTO.dni());
         customMetrics.incrementUsers();
 
         return new TokenResponseDTO(
@@ -67,7 +67,7 @@ public class AuthService
         );
 
         UserEntity user = findUserByDniOrThrow(requestDTO.dni());
-        log.info("Successfully authenticated");
+        log.info("Successfully authenticated with dni={}", requestDTO.dni());
 
         return new TokenResponseDTO(
                 jwtService.generateAccessToken(user),
@@ -78,7 +78,6 @@ public class AuthService
     public TokenResponseDTO refresh(HttpServletRequest request)
     {
         String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
-
         if (authHeader == null || !authHeader.startsWith("Bearer "))
         {
             throw new MissingTokenException("Invalid authentication header.");
@@ -88,7 +87,6 @@ public class AuthService
         String dni = jwtService.extractSubject(refreshToken);
 
         UserEntity user = findUserByDniOrThrow(dni);
-
         if (!jwtService.isTokenValid(refreshToken, user))
         {
             throw new InvalidTokenException("Invalid or expired refresh token.");
