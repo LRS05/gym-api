@@ -50,7 +50,7 @@ public class UserServiceTest
     }
 
     @Test
-    void getUserTest()
+    void getMe_WhenUserExists_ThenReturnUser()
     {
         // Given
         String dni = "87654321";
@@ -65,7 +65,7 @@ public class UserServiceTest
         when(userRepository.findByDni(dni)).thenReturn(Optional.of(expectedUser));
         when(userMapper.entityToDTO(expectedUser)).thenReturn(expectedDTO);
 
-        UserResponseDTO result = userService.getUser();
+        UserResponseDTO result = userService.getMe();
 
         // Then
         verify(userRepository).findByDni(dni);
@@ -75,7 +75,7 @@ public class UserServiceTest
     }
 
     @Test
-    void getUserNotFoundTest()
+    void getMe_WhenUserDoesNotExist_ThenThrowException()
     {
         // Given
         String dni = "99999999";
@@ -86,14 +86,14 @@ public class UserServiceTest
         // When
         when(userRepository.findByDni(dni)).thenReturn(Optional.empty());
 
-        assertThrows(UsernameNotFoundException.class, () -> userService.getUser());
+        assertThrows(UsernameNotFoundException.class, () -> userService.getMe());
 
         // Then
         verify(userRepository).findByDni(dni);
     }
 
     @Test
-    void deleteUserTest()
+    void deleteMe_WhenUserExistsAndPasswordIsValid_ThenDeleteUser()
     {
         // Given
         String dni = "87654321";
@@ -108,7 +108,7 @@ public class UserServiceTest
         when(userRepository.findByDni(dni)).thenReturn(Optional.of(expectedUser));
         when(passwordEncoder.matches(requestDTO.password(), expectedUser.getPassword())).thenReturn(true);
 
-        userService.deleteUser(requestDTO);
+        userService.deleteMe(requestDTO);
 
         // Then
         verify(userRepository).findByDni(dni);
@@ -119,7 +119,7 @@ public class UserServiceTest
     }
 
     @Test
-    void deleteUserNotFoundTest()
+    void deleteMe_WhenUserDoesNotExist_ThenThrowException()
     {
         // Given
         String dni = "99999999";
@@ -132,7 +132,7 @@ public class UserServiceTest
         // When
         when(userRepository.findByDni(dni)).thenReturn(Optional.empty());
 
-        assertThrows(UsernameNotFoundException.class, () -> userService.deleteUser(requestDTO));
+        assertThrows(UsernameNotFoundException.class, () -> userService.deleteMe(requestDTO));
 
         // Then
         verify(userRepository).findByDni(dni);
@@ -140,7 +140,7 @@ public class UserServiceTest
     }
 
     @Test
-    void deleteUserInvalidPasswordTest()
+    void deleteMe_WhenPasswordIsInvalid_ThenThrowException()
     {
         // Given
         String dni = "87654321";
@@ -155,7 +155,7 @@ public class UserServiceTest
         when(userRepository.findByDni(dni)).thenReturn(Optional.of(expectedUser));
         when(passwordEncoder.matches(requestDTO.password(), expectedUser.getPassword())).thenReturn(false);
 
-        assertThrows(InvalidPasswordException.class, () -> userService.deleteUser(requestDTO));
+        assertThrows(InvalidPasswordException.class, () -> userService.deleteMe(requestDTO));
 
         // Then
         verify(userRepository).findByDni(dni);

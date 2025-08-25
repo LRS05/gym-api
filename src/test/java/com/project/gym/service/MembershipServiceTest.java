@@ -51,7 +51,7 @@ public class MembershipServiceTest
     private MembershipService membershipService;
 
     @Test
-    void createMembershipUserRegisteredTest()
+    void createMembership_WhenUserExistsAndHasRoleUser_ThenReturnMembership()
     {
         // Given
         UserEntity expectedUser = UserTestDataFactory.userUser();
@@ -86,7 +86,7 @@ public class MembershipServiceTest
     }
 
     @Test
-    void createMembershipInvalidUserRoleTest()
+    void createMembership_WhenUserExistsAndHasInvalidRole_ThenThrowException()
     {
         // Given
         String dni = "12345678";
@@ -108,7 +108,7 @@ public class MembershipServiceTest
     }
 
     @Test
-    void createMembershipUserNotRegistered()
+    void createMembership_WhenUserDoesNotExist_ThenReturnMembershipWithoutUser()
     {
         // Given
         String dni = "99999999";
@@ -143,7 +143,7 @@ public class MembershipServiceTest
     }
 
     @Test
-    void getMembershipsByDateTest()
+    void getMembershipsByDate_WhenMembershipsExistInRange_ThenReturnMembershipsList()
     {
         // Given
         List<MembershipEntity> expectedMemberships = MembershipTestDataFactory.membershipListOf2025();
@@ -169,7 +169,7 @@ public class MembershipServiceTest
     }
 
     @Test
-    void getMembershipsByDateEmptyListTest()
+    void getMembershipsByDate_WhenNoMembershipsExistInRange_ThenReturnEmptyList()
     {
         // Given
         LocalDate start = LocalDate.of(2100, 1, 1);
@@ -189,7 +189,7 @@ public class MembershipServiceTest
     }
 
     @Test
-    void getMembershipByIdTest()
+    void getMembershipsById_WhenMembershipsExists_ThenReturnMembership()
     {
         // Given
         int id = 1;
@@ -210,7 +210,7 @@ public class MembershipServiceTest
     }
 
     @Test
-    void getMembershipByIdNotFoundTest()
+    void getMembershipById_WhenMembershipsDoesNotExist_ThenThrowException()
     {
         // Given
         int id = -1;
@@ -225,7 +225,7 @@ public class MembershipServiceTest
     }
 
     @Test
-    void getMembershipsByDniTest()
+    void getMembershipsByDni_WhenMembershipsExistForUser_ThenReturnMemberships()
     {
         // Given
         String dni = "87654321";
@@ -249,7 +249,7 @@ public class MembershipServiceTest
     }
 
     @Test
-    void getMembershipsByDniEmptyListTest()
+    void getMembershipsByDni_WhenNoMembershipsExistsForUser_ThenReturnEmptyList()
     {
         // Given
         String dni = "88888888";
@@ -268,7 +268,7 @@ public class MembershipServiceTest
     }
 
     @Test
-    void getCurrentMembershipByDniTest()
+    void getLastMembershipByDni_WhenMembershipExists_ThenReturnMembership()
     {
         // Given
         String dni = "87654321";
@@ -289,7 +289,7 @@ public class MembershipServiceTest
     }
 
     @Test
-    void getCurrentMembershipByDniNotFoundTest()
+    void getLastMembershipByDni_WhenMembershipDoesNotExist_ThenThrowException()
     {
         // Given
         String dni = "88888888";
@@ -303,7 +303,7 @@ public class MembershipServiceTest
     }
 
     @Test
-    void getActiveMembershipsTest()
+    void getActiveMemberships_WhenActiveMembershipsExist_ThenReturnMemberships()
     {
         // Given
         List<MembershipEntity> expectedMemberships = MembershipTestDataFactory.activeMembershipsList();
@@ -326,7 +326,7 @@ public class MembershipServiceTest
     }
 
     @Test
-    void getActiveMembershipsEmptyListTest()
+    void getActiveMemberships_WhenNoActiveMembershipsExist_ThenReturnEmptyList()
     {
         // When
         when(membershipRepository.findAllByStatus(MembershipStatus.ACTIVE)).thenReturn(new ArrayList<>());
@@ -342,7 +342,7 @@ public class MembershipServiceTest
     }
 
     @Test
-    void deactivateMembershipsTest()
+    void deactivateMemberships_WhenExpiredMembershipsExist_ThenSetStatusInactive()
     {
         // Given
         LocalDate actualDate = LocalDate.now();
@@ -366,7 +366,7 @@ public class MembershipServiceTest
     }
 
     @Test
-    void deactivateMembershipsEmptyExpiredListTest()
+    void deactivateMemberships_WhenNoExpiredMembershipExist_ThenDoNothing()
     {
         // Given
         LocalDate actualDate = LocalDate.now();
@@ -382,7 +382,7 @@ public class MembershipServiceTest
     }
 
     @Test
-    void updateMembershipStatusByIdTest()
+    void updateMembershipsById_WhenMembershipExists_ThenUpdateStatus()
     {
         // Given
         int id = 1;
@@ -407,7 +407,7 @@ public class MembershipServiceTest
     }
 
     @Test
-    void updateMembershipsStatusByIdNotFoundTest()
+    void updateMembershipStatusById_WhenMembershipDoesNotExist_ThenThrowException()
     {
         // Given
         int id = 1;
@@ -424,7 +424,7 @@ public class MembershipServiceTest
     }
 
     @Test
-    void updateMembershipStatusByIdAlreadyInStatusTest()
+    void updateMembershipStatusById_WhenMembershipAlreadyHasRequestedStatus_ThenDoNothing()
     {
         // Given
         int id = 1;
@@ -444,7 +444,7 @@ public class MembershipServiceTest
     }
 
     @Test
-    void deleteMembershipByIdTest()
+    void deleteMembershipById_WhenMembershipExists_ThenDeleteMembership()
     {
         // Given
         int id = 1;
@@ -464,7 +464,7 @@ public class MembershipServiceTest
     }
 
     @Test
-    void deleteMembershipByIdNotFoundTest()
+    void deleteMembershipById_WhenMembershipDoesNotExist_ThenThrowException()
     {
         // Given
         int id = -1;
@@ -480,7 +480,7 @@ public class MembershipServiceTest
     }
 
     @Test
-    void deleteMembershipsByDniTest()
+    void deleteMembershipsByDni_WhenMembershipsExistsForUser_ThenDeleteMemberships()
     {
         // Given
         String dni = "87654321";
@@ -506,7 +506,7 @@ public class MembershipServiceTest
     }
 
     @Test
-    void deleteMembershipsByDniEmptyListTest()
+    void deleteMembershipsByDni_WhenNoMembershipsExistsForUser_ThenDoNothing()
     {
         // Given
         String dni = "99999999";

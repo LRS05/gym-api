@@ -5,9 +5,8 @@ import com.project.gym.dto.AuthRequestDTO;
 import com.project.gym.dto.RegisterRequestDTO;
 import com.project.gym.dto.TokenResponseDTO;
 import com.project.gym.entity.UserEntity;
-import com.project.gym.exception.UserAlreadyRegisteredException;
-import com.project.gym.exception.InvalidTokenException;
-import com.project.gym.exception.MissingTokenException;
+import com.project.gym.entity.enums.Gender;
+import com.project.gym.exception.*;
 import com.project.gym.repository.UserRepository;
 import com.project.gym.data.UserTestDataFactory;
 import jakarta.servlet.http.HttpServletRequest;
@@ -17,6 +16,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -54,12 +54,13 @@ public class AuthServiceTest
     private AuthService authService;
 
     @Test
-    void registerTest()
+    void register_WheUserNotRegistered_ThenCreateUserAndReturnTokens()
     {
         // Given
         RegisterRequestDTO requestDTO = new RegisterRequestDTO(
                 "87654321",
                 "gordomono",
+                Gender.MALE,
                 "Franco",
                 "Cataldi"
         );
@@ -88,12 +89,13 @@ public class AuthServiceTest
     }
 
     @Test
-    void registerUserAlreadyRegisteredTest()
+    void register_WhenUserAlreadyRegistered_ThenThrowException()
     {
         // Given
         RegisterRequestDTO requestDTO = new RegisterRequestDTO(
                 "87654321",
                 "gordomono",
+                Gender.MALE,
                 "Ulises",
                 "Quiroz"
         );
@@ -101,16 +103,16 @@ public class AuthServiceTest
         // When
         when(userRepository.existsByDni(requestDTO.dni())).thenReturn(true);
 
+        // Then
         assertThrows(UserAlreadyRegisteredException.class, () -> authService.register(requestDTO));
 
-        // Then
         verify(userRepository).existsByDni(requestDTO.dni());
         verifyNoMoreInteractions(userRepository);
         verifyNoInteractions(jwtService);
     }
 
     @Test
-    void authenticateTest()
+    void authenticate_WhenCredentialsAreValid_ThenReturnTokens()
     {
         // Given
         AuthRequestDTO requestDTO = new AuthRequestDTO(
@@ -144,7 +146,7 @@ public class AuthServiceTest
     }
 
     @Test
-    void authenticateInvalidCredentialsTest()
+    void authenticate_WhenCredentialsAreInvalid_ThenThrowException()
     {
         // Given
         AuthRequestDTO requestDTO = new AuthRequestDTO(
@@ -154,16 +156,17 @@ public class AuthServiceTest
 
         // When
         when(authenticationManager.authenticate(any(Authentication.class))).thenThrow(BadCredentialsException.class);
-        assertThrows(BadCredentialsException.class, () -> authService.authenticate(requestDTO));
 
         // Then
+        assertThrows(BadCredentialsException.class, () -> authService.authenticate(requestDTO));
+
         verify(authenticationManager).authenticate(any(Authentication.class));
         verifyNoInteractions(userRepository);
         verifyNoInteractions(jwtService);
     }
 
     @Test
-    void authenticateUserNotFoundTest()
+    void authenticate_WhenUserDoesNotExist_ThenThrowException()
     {
         // Given
         AuthRequestDTO requestDTO = new AuthRequestDTO(
@@ -174,16 +177,16 @@ public class AuthServiceTest
         // When
         when(authenticationManager.authenticate(any(Authentication.class))).thenThrow(UsernameNotFoundException.class);
 
+        // Then
         assertThrows(UsernameNotFoundException.class, () -> authService.authenticate(requestDTO));
 
-        // Then
         verify(authenticationManager).authenticate(any(Authentication.class));
         verifyNoInteractions(userRepository);
         verifyNoInteractions(jwtService);
     }
 
     @Test
-    void refreshTest()
+    void refresh_WhenHeaderAndTokenAreValid_ThenReturnNewAccessToken()
     {
         // Given
         String dni = "46622977";
@@ -192,16 +195,18 @@ public class AuthServiceTest
         String accessToken = "new-access-token";
 
         // When
-        when(httpServletRequest.getHeader("Authorization")).thenReturn("Bearer " + refreshToken);
+        when(httpServletRequest.getHeader(HttpHeaders.AUTHORIZATION)).thenReturn("Bearer " + refreshToken);
         when(jwtService.extractSubject(refreshToken)).thenReturn(dni);
         when(userRepository.findByDni(dni)).thenReturn(Optional.of(expectedUser));
+        when(jwtService.isRefreshToken(refreshToken)).thenReturn(true);
         when(jwtService.isTokenValid(refreshToken, expectedUser)).thenReturn(true);
         when(jwtService.generateAccessToken(expectedUser)).thenReturn(accessToken);
 
         TokenResponseDTO result = authService.refresh(httpServletRequest);
 
         // Then
-        verify(httpServletRequest).getHeader("Authorization");
+        verify(httpServletRequest).getHeader(HttpHeaders.AUTHORIZATION);
+        verify(jwtService).isRefreshToken(refreshToken);
         verify(jwtService).extractSubject(refreshToken);
         verify(userRepository).findByDni(dni);
         verify(jwtService).isTokenValid(refreshToken, expectedUser);
@@ -212,37 +217,62 @@ public class AuthServiceTest
     }
 
     @Test
-    void refreshInvalidHeaderTest()
+    void refresh_WhenAuthorizationHeaderIsInvalid_ThenThrowException()
     {
         // When
-        when(httpServletRequest.getHeader("Authorization")).thenReturn("invalid-header ");
-        assertThrows(MissingTokenException.class, () -> authService.refresh(httpServletRequest));
+        when(httpServletRequest.getHeader(HttpHeaders.AUTHORIZATION)).thenReturn("invalid-header ");
 
         // Then
-        verify(httpServletRequest).getHeader("Authorization");
+        assertThrows(InvalidAuthorizationHeaderException.class, () -> authService.refresh(httpServletRequest));
+
+        verify(httpServletRequest).getHeader(HttpHeaders.AUTHORIZATION);
         verifyNoInteractions(userRepository);
         verifyNoInteractions(jwtService);
     }
 
     @Test
-    void refreshInvalidDniTest()
+    void refresh_WhenTokenIsNotRefresh_ThenThrowException()
     {
         // Given
         String refreshToken = "refresh-token";
 
         // When
-        when(httpServletRequest.getHeader("Authorization")).thenReturn("Bearer " + refreshToken);
-        when(jwtService.extractSubject(refreshToken)).thenReturn(null);
-
-        assertThrows(UsernameNotFoundException.class, () -> authService.refresh(httpServletRequest));
+        when(httpServletRequest.getHeader(HttpHeaders.AUTHORIZATION)).thenReturn("Bearer " + refreshToken);
+        when(jwtService.isRefreshToken(refreshToken)).thenReturn(false);
 
         // Then
-        verify(httpServletRequest).getHeader("Authorization");
-        verify(jwtService).extractSubject(refreshToken);
+        assertThrows(InvalidTokenTypeException.class, () -> authService.refresh(httpServletRequest));
+
+        verify(httpServletRequest).getHeader(HttpHeaders.AUTHORIZATION);
+        verify(jwtService).isRefreshToken(refreshToken);
+        verifyNoMoreInteractions(jwtService);
     }
 
     @Test
-    void refreshInvalidOrExpiredTokenTest()
+    void refresh_WhenUserDoesNotExist_ThenThrowException()
+    {
+        // Given
+        String dni = "99999999";
+        String refreshToken = "refresh-token";
+
+        // When
+        when(httpServletRequest.getHeader(HttpHeaders.AUTHORIZATION)).thenReturn("Bearer " + refreshToken);
+        when(jwtService.isRefreshToken(refreshToken)).thenReturn(true);
+        when(jwtService.extractSubject(refreshToken)).thenReturn(dni);
+        when(userRepository.findByDni(dni)).thenReturn(Optional.empty());
+
+        // Then
+        assertThrows(UsernameNotFoundException.class, () -> authService.refresh(httpServletRequest));
+
+        verify(httpServletRequest).getHeader(HttpHeaders.AUTHORIZATION);
+        verify(jwtService).isRefreshToken(refreshToken);
+        verify(jwtService).extractSubject(refreshToken);
+        verify(userRepository).findByDni(dni);
+        verifyNoMoreInteractions(jwtService);
+    }
+
+    @Test
+    void refresh_WhenTokenIsInvalidOrExpired_ThenThrowException()
     {
         // Given
         String dni = "46622977";
@@ -250,18 +280,21 @@ public class AuthServiceTest
         UserEntity expectedUser = UserTestDataFactory.userAdmin();
 
         // When
-        when(httpServletRequest.getHeader("Authorization")).thenReturn("Bearer " + refreshToken);
+        when(httpServletRequest.getHeader(HttpHeaders.AUTHORIZATION)).thenReturn("Bearer " + refreshToken);
+        when(jwtService.isRefreshToken(refreshToken)).thenReturn(true);
         when(jwtService.extractSubject(refreshToken)).thenReturn(dni);
         when(userRepository.findByDni(dni)).thenReturn(Optional.of(expectedUser));
         when(jwtService.isTokenValid(refreshToken, expectedUser)).thenReturn(false);
 
+        // Then
         assertThrows(InvalidTokenException.class, () -> authService.refresh(httpServletRequest));
 
-        // Then
-        verify(httpServletRequest).getHeader("Authorization");
+        verify(httpServletRequest).getHeader(HttpHeaders.AUTHORIZATION);
+        verify(jwtService).isRefreshToken(refreshToken);
         verify(jwtService).extractSubject(refreshToken);
         verify(userRepository).findByDni(dni);
         verify(jwtService).isTokenValid(refreshToken, expectedUser);
+        verifyNoMoreInteractions(jwtService);
     }
 
 }

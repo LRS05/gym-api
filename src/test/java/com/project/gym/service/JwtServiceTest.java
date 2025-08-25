@@ -2,6 +2,8 @@ package com.project.gym.service;
 
 import com.project.gym.entity.UserEntity;
 import com.project.gym.data.UserTestDataFactory;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.MalformedJwtException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,7 +28,7 @@ public class JwtServiceTest
     }
 
     @Test
-    void generateAccessTokenTest()
+    void generateAccessToken_WhenUserIsValid_ThenReturnAccessToken()
     {
         // Given
         UserEntity expectedUser = UserTestDataFactory.userAdmin();
@@ -41,7 +43,7 @@ public class JwtServiceTest
     }
 
     @Test
-    void generateRefreshTokenTest()
+    void generateRefreshToken_WhenUserIsValid_ThenReturnRefreshToken()
     {
         // Given
         UserEntity expectedUser = UserTestDataFactory.userAdmin();
@@ -56,7 +58,7 @@ public class JwtServiceTest
     }
 
     @Test
-    void isTokenValidTest()
+    void isTokenValid_WhenTokenBelongsToSameUser_ThenReturnTrue()
     {
         // Given
         UserEntity expectedUser = UserTestDataFactory.userAdmin();
@@ -69,7 +71,7 @@ public class JwtServiceTest
     }
 
     @Test
-    void isTokenValidInvalidSubjectTest()
+    void isTokenValid_WhenTokenBelongsToDifferentUser_ThenReturnFalse()
     {
         // Given
         UserEntity expectedTokenUser = UserTestDataFactory.userAdmin();
@@ -83,7 +85,7 @@ public class JwtServiceTest
     }
 
     @Test
-    void isTokenValidExpiredTokenTest()
+    void isTokenValid_WhenTokenIsExpired_ThenReturnFalse()
     {
         // Given
         jwtService = new JwtService(
@@ -101,7 +103,48 @@ public class JwtServiceTest
     }
 
     @Test
-    void extractDniTest()
+    void isRefreshToken_WhenTokenIsRefresh_ThenReturnTrue()
+    {
+        // Given
+        UserEntity expectedUser = UserTestDataFactory.userUser();
+        String refreshToken = jwtService.generateRefreshToken(expectedUser);
+
+        // When
+        boolean result = jwtService.isRefreshToken(refreshToken);
+
+        // Then
+        assertTrue(result);
+    }
+
+    @Test
+    void isRefreshToken_WhenTokenIsAccess_ThenReturnFalse()
+    {
+        // Given
+        UserEntity expectedUser = UserTestDataFactory.userUser();
+        String accessToken = jwtService.generateAccessToken(expectedUser);
+
+        // When
+        boolean result = jwtService.isRefreshToken(accessToken);
+
+        // Then
+        assertFalse(result);
+    }
+
+    @Test
+    void isRefreshToken_WhenTokenIsInvalidOrExpired_ThenReturnFalse()
+    {
+        // Given
+        String invalidToken = "TOKEN";
+
+        // When
+        boolean result = jwtService.isRefreshToken(invalidToken);
+
+        // Then
+        assertFalse(result);
+    }
+
+    @Test
+    void extractSubject_WhenAccessTokenIsValid_ThenReturnExpectedDni()
     {
         // Given
         UserEntity expectedUser = UserTestDataFactory.userStaff();
@@ -114,4 +157,31 @@ public class JwtServiceTest
         assertEquals(dni, jwtService.extractSubject(result));
     }
 
+    @Test
+    void extractSubject_WhenTokenIsMalformed_ThenThrowException()
+    {
+        // Given
+        String malformedToken = "malformedToken";
+
+        // Then
+        assertThrows(MalformedJwtException.class, () -> jwtService.extractSubject(malformedToken));
+    }
+
+    @Test
+    void extractSubject_WhenTokenIsExpired_ThenThrowException()
+    {
+        // Given
+        jwtService = new JwtService(
+                SECRET_KEY_TEST,
+                -1,
+                -1
+        );
+        UserEntity expectedUser = UserTestDataFactory.userUser();
+
+        // When
+        String expiredToken = jwtService.generateAccessToken(expectedUser);
+
+        // Then
+        assertThrows(ExpiredJwtException.class, () -> jwtService.extractSubject(expiredToken));
+    }
 }

@@ -34,7 +34,7 @@ public class StaffServiceTest
     private StaffService staffService;
 
     @Test
-    void getUsersTest()
+    void getUsers_WhenUserExist_ThenReturnUsers()
     {
         // Given
         List<UserEntity> expectedUsers = UserTestDataFactory.userList();
@@ -43,6 +43,7 @@ public class StaffServiceTest
                 .map(u -> new UserResponseDTO(
                         u.getId(),
                         u.getRole(),
+                        u.getGender(),
                         u.getDni(),
                         u.getFirstName(),
                         u.getLastName(),
@@ -61,10 +62,11 @@ public class StaffServiceTest
         verify(userMapper).entityToDTO(expectedUsers);
 
         assertEquals(expectedDTOs, result);
+        assertTrue(expectedDTOs.stream().allMatch(u -> u.role() == Role.USER));
     }
 
     @Test
-    void getUsersEmptyListTest()
+    void getUsers_WhenNoUsersExist_ThenReturnEmptyList()
     {
 
         // When
@@ -81,7 +83,7 @@ public class StaffServiceTest
     }
 
     @Test
-    void getUserByDniTest()
+    void getUserByDni_WhenUserExistsAndHasRoleUser_ThenReturnUser()
     {
         // Given
         String dni = "87654321";
@@ -103,7 +105,7 @@ public class StaffServiceTest
     }
 
     @Test
-    void getUserByDniNotFoundTest()
+    void getUserByDni_WhenUserDoesNotExist_ThenThrowException()
     {
         // Given
         String dni = "99999999";
@@ -117,7 +119,7 @@ public class StaffServiceTest
     }
 
     @Test
-    void getUserByDniAccessDeniedTest()
+    void getUserByDni_WhenUserExistsAndHasInvalidRole_ThenThrowException()
     {
         // Given
         String dni = "46622977";
@@ -134,7 +136,7 @@ public class StaffServiceTest
     }
 
     @Test
-    void getUserByIdTest()
+    void getUserById_WhenUserExistsAndHasRoleUser_ThenReturnUser()
     {
         // Given
         int id = 3;
@@ -156,7 +158,7 @@ public class StaffServiceTest
     }
 
     @Test
-    void getUserByIdNotFoundTest()
+    void getUserById_WhenUserDoesNotExist_ThenThrowException()
     {
         // Given
         int id = 99999999;
@@ -170,7 +172,7 @@ public class StaffServiceTest
     }
 
     @Test
-    void getUserByIdAccessDeniedTest()
+    void getUserById_WhenUserExistsAndHasInvalidRole_ThenThrowException()
     {
         // Given
         int id = 1;
