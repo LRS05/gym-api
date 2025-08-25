@@ -2,6 +2,7 @@ package com.project.gym.data;
 
 import com.project.gym.dto.UserResponseDTO;
 import com.project.gym.entity.UserEntity;
+import com.project.gym.entity.enums.Gender;
 import com.project.gym.entity.enums.Role;
 
 import java.time.LocalDate;
@@ -17,6 +18,7 @@ public class UserTestDataFactory
                 .role(Role.ADMIN)
                 .dni("46622977")
                 .password("$2a$10$HrS.OveuXvTWKcDhSgMuvubAFVYBKtFz/mRFL93rpVf5pfpdLSYA6")
+                .gender(Gender.MALE)
                 .firstName("Lorenzo")
                 .lastName("Sarlo")
                 .creationDate(LocalDate.of(2025, 1, 1))
@@ -32,6 +34,7 @@ public class UserTestDataFactory
                 .role(Role.STAFF)
                 .dni("12345678")
                 .password("$2a$10$HrS.OveuXvTWKcDhSgMuvubAFVYBKtFz/mRFL93rpVf5pfpdLSYA6")
+                .gender(Gender.MALE)
                 .firstName("Matias")
                 .lastName("Freccero")
                 .creationDate(LocalDate.of(2025, 1, 1))
@@ -47,6 +50,7 @@ public class UserTestDataFactory
                 .role(Role.USER)
                 .dni("87654321")
                 .password("$2a$10$HrS.OveuXvTWKcDhSgMuvubAFVYBKtFz/mRFL93rpVf5pfpdLSYA6")
+                .gender(Gender.MALE)
                 .firstName("Franco")
                 .lastName("Cataldi")
                 .creationDate(LocalDate.of(2025, 1, 1))
@@ -57,11 +61,6 @@ public class UserTestDataFactory
     public static List<UserEntity> userList()
     {
         return List.of(userAdmin(), userStaff(), userUser());
-    }
-
-    public static UserResponseDTO userAdminDTO()
-    {
-        return entityToDTO(userAdmin());
     }
 
     public static UserResponseDTO userStaffDTO()
@@ -93,6 +92,7 @@ public class UserTestDataFactory
         return new UserResponseDTO(
                 user.getId(),
                 user.getRole(),
+                user.getGender(),
                 user.getDni(),
                 user.getFirstName(),
                 user.getLastName(),
