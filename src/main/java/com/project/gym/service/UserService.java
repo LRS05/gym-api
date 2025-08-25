@@ -24,13 +24,14 @@ public class UserService
     private final PasswordEncoder passwordEncoder;
     private final CustomMetrics customMetrics;
 
-    public UserResponseDTO getUser()
+    public UserResponseDTO getMe()
     {
-        UserEntity user = findCurrentUserOrThrow();
-        return userMapper.entityToDTO(user);
+        return userMapper.entityToDTO(
+                findCurrentUserOrThrow()
+        );
     }
 
-    public void deleteUser(PasswordRequestDTO requestDTO)
+    public void deleteMe(PasswordRequestDTO requestDTO)
     {
         UserEntity user = findCurrentUserOrThrow();
 
@@ -40,7 +41,7 @@ public class UserService
         }
         userRepository.delete(user);
         customMetrics.decrementUsers();
-        log.info("User with DNI {} successfully deleted their account.", user.getDni());
+        log.info("Deleted own account with dni={}", user.getDni());
     }
 
     private UserEntity findCurrentUserOrThrow()

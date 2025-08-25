@@ -26,7 +26,7 @@ public class AdminController
     @GetMapping
     public ResponseEntity<UserResponseDTO> getMe()
     {
-        return ResponseEntity.ok(userService.getUser());
+        return ResponseEntity.ok(userService.getMe());
     }
 
     @GetMapping("/users")

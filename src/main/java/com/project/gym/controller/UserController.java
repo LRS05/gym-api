@@ -28,14 +28,14 @@ public class UserController
     @GetMapping
     public ResponseEntity<UserResponseDTO> getMe()
     {
-        return ResponseEntity.ok(userService.getUser());
+        return ResponseEntity.ok(userService.getMe());
     }
 
     @DeleteMapping
     public ResponseEntity<String> deleteMe(@Valid @RequestBody PasswordRequestDTO requestDTO)
     {
         log.info("Attempting to delete own account");
-        userService.deleteUser(requestDTO);
+        userService.deleteMe(requestDTO);
         return ResponseEntity.ok("Account deleted successfully.");
     }
 
