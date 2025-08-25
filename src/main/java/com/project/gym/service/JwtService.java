@@ -1,6 +1,7 @@
 package com.project.gym.service;
 
 import com.project.gym.entity.UserEntity;
+import com.project.gym.entity.enums.TokenType;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -29,12 +30,12 @@ public class JwtService
 
     public String generateAccessToken(UserEntity user)
     {
-        return buildToken(user, accessExpiration, "access");
+        return buildToken(user, accessExpiration, TokenType.ACCESS);
     }
 
     public String generateRefreshToken(UserEntity user)
     {
-        return buildToken(user, refreshExpiration, "refresh");
+        return buildToken(user, refreshExpiration, TokenType.REFRESH);
     }
 
     public boolean isRefreshToken(String token)
@@ -47,7 +48,7 @@ public class JwtService
                     .parseSignedClaims(token)
                     .getPayload()
                     .get("type", String.class);
-            return "refresh".equals(type);
+            return TokenType.REFRESH.name().equals(type);
         }
         catch (JwtException | IllegalArgumentException e)
         {
@@ -88,14 +89,14 @@ public class JwtService
                 .getExpiration();
     }
 
-    private String buildToken(UserEntity user, long expiration, String tokenType)
+    private String buildToken(UserEntity user, long expiration, TokenType type)
     {
         return Jwts
                 .builder()
                 .id(UUID.randomUUID().toString())
                 .subject(user.getDni())
                 .claim("role", user.getRole())
-                .claim("type", tokenType)
+                .claim("type", type.name())
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(secretKey())
