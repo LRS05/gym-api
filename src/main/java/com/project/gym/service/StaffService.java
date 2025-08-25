@@ -23,8 +23,9 @@ public class StaffService
 
     public List<UserResponseDTO> getUsers()
     {
-        List<UserEntity> users = userRepository.findAllByRole(Role.USER);
-        return userMapper.entityToDTO(users);
+        return userMapper.entityToDTO(
+                userRepository.findAllByRole(Role.USER)
+        );
     }
 
     public UserResponseDTO getUserByDni(String dni)
@@ -32,11 +33,9 @@ public class StaffService
         UserEntity user = userRepository.findByDni(dni)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found."));
 
-        if (user.getRole() != Role.USER)
-        {
-            log.warn("Attempted to modify a non-USER user.");
-            throw new AccessDeniedException("You are not allowed to update this user.");
-        }
+        // If the user is ADMIN or STAFF, throw an exception.
+        validateStaffHasAccess(user);
+
         return userMapper.entityToDTO(user);
     }
 
@@ -45,11 +44,19 @@ public class StaffService
         UserEntity user = userRepository.findById(id)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found."));
 
-        if (!user.getRole().equals(Role.USER))
-        {
-            log.warn("Attempted to read a non-USER user.");
-            throw new AccessDeniedException("You are not allowed to see this user.");
-        }
+        // If the user is ADMIN or STAFF, throw an exception.
+        validateStaffHasAccess(user);
+
         return userMapper.entityToDTO(user);
     }
+
+    private void validateStaffHasAccess(UserEntity user)
+    {
+        if (user.getRole() != Role.USER)
+        {
+            log.warn("Attempted to read an ADMIN or STAFF user");
+            throw new AccessDeniedException("You are not allowed to see this user.");
+        }
+    }
+
 }
