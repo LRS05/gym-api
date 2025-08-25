@@ -115,6 +115,15 @@ public class GlobalExceptionHandler
 
 
 
+    @ExceptionHandler(InvalidAuthorizationHeaderException.class)
+    public ResponseEntity<Object> handleInvalidAuthorizationHeaderException(InvalidAuthorizationHeaderException e)
+    {
+        log.info("Invalid Authorization header: expected a JWT token");
+        return new ResponseEntity<>(e.getMessage(), HttpStatus.UNAUTHORIZED);
+    }
+
+
+
     @ExceptionHandler(MissingTokenException.class)
     public ResponseEntity<Object> handleMissingTokenException(MissingTokenException e)
     {

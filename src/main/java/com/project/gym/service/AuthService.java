@@ -6,10 +6,7 @@ import com.project.gym.dto.RegisterRequestDTO;
 import com.project.gym.dto.TokenResponseDTO;
 import com.project.gym.entity.UserEntity;
 import com.project.gym.entity.enums.Role;
-import com.project.gym.exception.InvalidTokenTypeException;
-import com.project.gym.exception.UserAlreadyRegisteredException;
-import com.project.gym.exception.InvalidTokenException;
-import com.project.gym.exception.MissingTokenException;
+import com.project.gym.exception.*;
 import com.project.gym.repository.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -83,7 +80,7 @@ public class AuthService
         String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
         if (authHeader == null || !authHeader.startsWith("Bearer "))
         {
-            throw new MissingTokenException("Invalid authentication header.");
+            throw new InvalidAuthorizationHeaderException("Invalid authentication header.");
         }
 
         String refreshToken = authHeader.substring(7);
