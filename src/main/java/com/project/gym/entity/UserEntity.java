@@ -45,7 +45,7 @@ public class UserEntity implements UserDetails
     @Column(name = "creation_date")
     private LocalDate creationDate;
 
-    @OneToMany(mappedBy = "user", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    @OneToMany(mappedBy = "user", cascade = CascadeType.REMOVE)
     private List<MembershipEntity> memberships;
 
     @Override
