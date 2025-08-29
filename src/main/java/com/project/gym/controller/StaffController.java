@@ -66,7 +66,13 @@ public class StaffController
     public ResponseEntity<MembershipResponseDTO> createMembership(@PathVariable String dni, @Valid @RequestBody MembershipRequestDTO requestDTO)
     {
         log.info("Attempting to create a membership for the user with dni={}, type={}, payment method={}", dni, requestDTO.type(), requestDTO.paymentMethod());
-        return ResponseEntity.ok(membershipService.createMembership(dni, requestDTO));
+        return ResponseEntity.ok(membershipService.createMembershipByDni(dni, requestDTO));
+    }
+
+    @GetMapping("/membership/{id}")
+    public ResponseEntity<MembershipResponseDTO> getMembershipById(@PathVariable int id)
+    {
+        return ResponseEntity.ok(membershipService.getMembershipById(id));
     }
 
     @GetMapping("/memberships/date")
