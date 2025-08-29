@@ -52,7 +52,7 @@ public class UserController
     public ResponseEntity<MembershipResponseDTO> createMembership(Principal principal, @Valid @RequestBody MembershipRequestDTO requestDTO)
     {
         log.info("Attempting to create own membership with dni={}, type={}, payment method={}", principal.getName(), requestDTO.type(), requestDTO.paymentMethod());
-        return ResponseEntity.status(HttpStatus.CREATED).body(membershipService.createMembership(principal.getName(), requestDTO));
+        return ResponseEntity.status(HttpStatus.CREATED).body(membershipService.createMembershipByDni(principal.getName(), requestDTO));
     }
 
     @GetMapping("/memberships")
