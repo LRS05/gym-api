@@ -13,15 +13,18 @@ import com.project.gym.repository.MembershipRepository;
 import com.project.gym.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
-import java.util.List;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -46,7 +49,25 @@ public class AdminControllerIntegrationTest
 
     @Test
     @WithMockUser(roles = "ADMIN", username = "46622977")
-    void getUsersTest() throws Exception
+    void getMe_WhenAdminAuthenticated_ThenReturnOkWithAdminInfo() throws Exception
+    {
+        mockMvc.perform(get("/api/v1/admin"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.dni").value("46622977"))
+                .andExpect(jsonPath("$.role").value("ADMIN"));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN", username = "99999999")
+    void getMe_WhenAdminDoesNotExist_ThenReturnNotFound() throws Exception
+    {
+        mockMvc.perform(get("/api/v1/admin"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN", username = "46622977")
+    void getUsers_WhenUsersExist_ThenReturnOkWithList() throws Exception
     {
         mockMvc.perform(get("/api/v1/admin/users"))
                 .andExpect(status().isOk())
@@ -55,32 +76,18 @@ public class AdminControllerIntegrationTest
 
     @Test
     @WithMockUser(roles = "ADMIN", username = "46622977")
-    void getUsersEmptyListTest() throws Exception
+    void getUsers_WhenNoUsersExist_ThenReturnOkWithEmptyList() throws Exception
     {
         userRepository.deleteAll();
+
         mockMvc.perform(get("/api/v1/admin/users"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(0));
     }
 
     @Test
-    void getUsersUnauthorizedTest() throws Exception
-    {
-        mockMvc.perform(get("/api/v1/admin/users"))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    @WithMockUser(roles = "STAFF", username = "12345678")
-    void getUsersNotAuthorizedTest() throws Exception
-    {
-        mockMvc.perform(get("/api/v1/admin/users"))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
     @WithMockUser(roles = "ADMIN", username = "46622977")
-    void getUserByDniTest() throws Exception
+    void getUserByDni_WhenUserExists_ThenReturnOkWithUser() throws Exception
     {
         String dni = "87654321";
 
@@ -93,58 +100,17 @@ public class AdminControllerIntegrationTest
 
     @Test
     @WithMockUser(roles = "ADMIN", username = "46622977")
-    void getUserByDniNotFoundTest() throws Exception
+    void getUserByDni_WhenUserDoesNotExist_ThenReturnNotFound() throws Exception
     {
         String dni = "99999999";
+
         mockMvc.perform(get("/api/v1/admin/user/dni/{dni}", dni))
                 .andExpect(status().isNotFound());
     }
 
     @Test
-    void getUserByDniUnauthorizedTest() throws Exception
-    {
-        String dni = "87654321";
-        mockMvc.perform(get("/api/v1/admin/user/dni/{dni}", dni))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    @WithMockUser(roles = "STAFF", username = "12345678")
-    void getUserByDniNotAuthorizedTest() throws Exception
-    {
-        String dni = "87654321";
-        mockMvc.perform(get("/api/v1/admin/user/dni/{dni}", dni))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
     @WithMockUser(roles = "ADMIN", username = "46622977")
-    void getMeTest() throws Exception
-    {
-        mockMvc.perform(get("/api/v1/admin"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.dni").value("46622977"))
-                .andExpect(jsonPath("$.role").value("ADMIN"));
-    }
-
-    @Test
-    void getMeUnauthorizedTest() throws Exception
-    {
-        mockMvc.perform(get("/api/v1/admin"))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    @WithMockUser(roles = "USER", username = "87654321")
-    void getMeNotAuthorizedTest() throws Exception
-    {
-        mockMvc.perform(get("/api/v1/admin"))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
-    @WithMockUser(roles = "ADMIN", username = "46622977")
-    void updateUserRoleByDniTest() throws Exception
+    void updateUserRoleByDni_WhenValidRequest_ThenReturnOkWithUpdatedRole() throws Exception
     {
         String dni = "87654321";
         RoleRequestDTO requestDTO = new RoleRequestDTO(Role.STAFF);
@@ -159,7 +125,7 @@ public class AdminControllerIntegrationTest
 
     @Test
     @WithMockUser(roles = "ADMIN", username = "46622977")
-    void updateUserRoleUserNotFoundTest() throws Exception
+    void updateUserRoleByDni_WhenUserDoesNotExist_ThenReturnNotFound() throws Exception
     {
         String dni = "99999999";
         RoleRequestDTO requestDTO = new RoleRequestDTO(Role.STAFF);
@@ -172,7 +138,7 @@ public class AdminControllerIntegrationTest
 
     @Test
     @WithMockUser(roles = "ADMIN", username = "46622977")
-    void updateUserRoleByDniInvalidDTOTest() throws Exception
+    void updateUserRoleByDni_WhenInvalidDTO_ThenReturnBadRequest() throws Exception
     {
         String dni = "87654321";
         RoleRequestDTO requestDTO = new RoleRequestDTO(null);
@@ -184,27 +150,24 @@ public class AdminControllerIntegrationTest
     }
 
     @Test
-    void updateUserRoleUnauthorizedTest() throws Exception
+    @WithMockUser(roles = "ADMIN", username = "46622977")
+    void updateUserRoleByDni_WhenUserIsAdmin_ThenReturnForbidden() throws Exception
     {
-        String dni = "87654321";
-        mockMvc.perform(patch("/api/v1/admin/user/dni/{dni}", dni))
-                .andExpect(status().isUnauthorized());
-    }
+        String dni = "46622977";
+        RoleRequestDTO requestDTO = new RoleRequestDTO(Role.USER);
 
-    @Test
-    @WithMockUser(roles = "STAFF", username = "87654321")
-    void updateUserRoleNotAuthorizedTest() throws Exception
-    {
-        String dni = "87654321";
-        mockMvc.perform(patch("/api/v1/admin/user/dni/{dni}", dni))
+        mockMvc.perform(patch("/api/v1/admin/user/dni/{dni}/role", dni)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(requestDTO)))
                 .andExpect(status().isForbidden());
     }
 
     @Test
     @WithMockUser(roles = "ADMIN", username = "46622977")
-    void deleteUserByDniTest() throws Exception
+    void deleteUserByDni_WhenUserExists_ThenReturnOkWithMessage() throws Exception
     {
         String dni = "87654321";
+
         mockMvc.perform(delete("/api/v1/admin/user/dni/{dni}", dni))
                 .andExpect(status().isOk())
                 .andExpect(content().string("User with dni " + dni + " successfully deleted."));
@@ -212,35 +175,30 @@ public class AdminControllerIntegrationTest
 
     @Test
     @WithMockUser(roles = "ADMIN", username = "46622977")
-    void deleteUserByDniNotFoundTest() throws Exception
+    void deleteUserByDni_WhenUserDoesNotExist_ThenReturnNotFound() throws Exception
     {
         String dni = "99999999";
+
         mockMvc.perform(delete("/api/v1/admin/user/dni/{dni}", dni))
                 .andExpect(status().isNotFound());
     }
 
     @Test
-    void deleteUserByDniUnauthorizedTest() throws Exception
+    @WithMockUser(roles = "ADMIN", username = "46622977")
+    void deleteUserByDni_WhenUserIsAdmin_ThenReturnForbidden() throws Exception
     {
-        String dni = "99999999";
-        mockMvc.perform(delete("/api/v1/admin/user/dni/{dni}", dni))
-                .andExpect(status().isUnauthorized());
-    }
+        String dni = "46622977";
 
-    @Test
-    @WithMockUser(roles = "STAFF", username = "87654321")
-    void deleteUserByDniNotAuthorizedTest() throws Exception
-    {
-        String dni = "99999999";
         mockMvc.perform(delete("/api/v1/admin/user/dni/{dni}", dni))
                 .andExpect(status().isForbidden());
     }
 
     @Test
     @WithMockUser(roles = "ADMIN", username = "46622977")
-    void deleteUserByIdTest() throws Exception
+    void deleteUserById_WhenUserExists_ThenReturnOkWithMessage() throws Exception
     {
         int id = 2;
+
         mockMvc.perform(delete("/api/v1/admin/user/{id}", id))
                 .andExpect(status().isOk())
                 .andExpect(content().string("User with id " + id + " successfully deleted."));
@@ -248,39 +206,37 @@ public class AdminControllerIntegrationTest
 
     @Test
     @WithMockUser(roles = "ADMIN", username = "46622977")
-    void deleteUserByIdNotFoundTest() throws Exception
+    void deleteUserById_WhenUserDoesNotExist_ThenReturnNotFound() throws Exception
     {
         int id = -1;
+
         mockMvc.perform(delete("/api/v1/admin/user/{id}", id))
                 .andExpect(status().isNotFound());
     }
 
     @Test
-    void deleteUserByIdUnauthorizedTest() throws Exception
+    @WithMockUser(roles = "ADMIN", username = "46622977")
+    void deleteUserById_WhenUserIsAdmin_ThenReturnForbidden() throws Exception
     {
         int id = 1;
-        mockMvc.perform(delete("/api/v1/admin/user/{id}", id))
-                .andExpect(status().isUnauthorized());
-    }
 
-    @Test
-    @WithMockUser(roles = "STAFF", username = "87654321")
-    void deleteUserByIdNotAuthorizedTest() throws Exception
-    {
-        int id = 1;
         mockMvc.perform(delete("/api/v1/admin/user/{id}", id))
                 .andExpect(status().isForbidden());
     }
 
+
+
     /*
 
-           /api/v1/user/membership TESTS
+           Memberships Controllers Tests
 
      */
 
+
+
     @Test
     @WithMockUser(roles = "ADMIN", username = "46622977")
-    void createMembershipTest() throws Exception
+    void createMembershipByDni_WhenValidRequest_ThenReturnOkWithMembership() throws Exception
     {
         String dni = "87654321";
         MembershipRequestDTO requestDTO = new MembershipRequestDTO(
@@ -288,7 +244,7 @@ public class AdminControllerIntegrationTest
                 PaymentMethod.CASH
         );
 
-        mockMvc.perform(post("/api/v1/admin/membership/{dni}", dni)
+        mockMvc.perform(post("/api/v1/admin/membership/dni/{dni}", dni)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDTO)))
                 .andExpect(status().isOk())
@@ -300,7 +256,7 @@ public class AdminControllerIntegrationTest
 
     @Test
     @WithMockUser(roles = "ADMIN", username = "46622977")
-    void createMembershipUserNotAllowedTest() throws Exception
+    void createMembershipByDni_WhenUserNotAllowed_ThenReturnBadRequest() throws Exception
     {
         String dni = "12345678";
         MembershipRequestDTO requestDTO = new MembershipRequestDTO(
@@ -308,7 +264,7 @@ public class AdminControllerIntegrationTest
                 PaymentMethod.CASH
         );
 
-        mockMvc.perform(post("/api/v1/admin/membership/{dni}", dni)
+        mockMvc.perform(post("/api/v1/admin/membership/dni/{dni}", dni)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDTO)))
                 .andExpect(status().isBadRequest());
@@ -316,37 +272,20 @@ public class AdminControllerIntegrationTest
 
     @Test
     @WithMockUser(roles = "ADMIN", username = "46622977")
-    void createMembershipInvalidDTOTest() throws Exception
+    void createMembershipByDni_WhenInvalidDTO_ThenReturnBadRequest() throws Exception
     {
         String dni = "99999999";
         MembershipRequestDTO requestDTO = new MembershipRequestDTO(null, null);
 
-        mockMvc.perform(post("/api/v1/admin/membership/{dni}", dni)
+        mockMvc.perform(post("/api/v1/admin/membership/dni/{dni}", dni)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDTO)))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
-    void createMembershipUnauthorizedTest() throws Exception
-    {
-        String dni = "99999999";
-        mockMvc.perform(post("/api/v1/admin/membership/{dni}", dni))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    @WithMockUser(roles = "STAFF", username = "12345678")
-    void createMembershipNotAuthorizedTest() throws Exception
-    {
-        String dni = "99999999";
-        mockMvc.perform(post("/api/v1/admin/membership/{dni}", dni))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
     @WithMockUser(roles = "ADMIN", username = "46622977")
-    void getMembershipsByDateTest() throws Exception
+    void getMembershipsByDate_WhenValidDateRange_ThenReturnOkWithList() throws Exception
     {
         mockMvc.perform(get("/api/v1/admin/memberships/date")
                         .param("start", "2025-01-01")
@@ -357,7 +296,7 @@ public class AdminControllerIntegrationTest
 
     @Test
     @WithMockUser(roles = "ADMIN", username = "46622977")
-    void getMembershipsByDateEmptyListTest() throws Exception
+    void getMembershipsByDate_WhenNoMembershipsInRange_ThenReturnOkWithEmptyList() throws Exception
     {
         mockMvc.perform(get("/api/v1/admin/memberships/date")
                         .param("start", "2023-01-01")
@@ -368,38 +307,21 @@ public class AdminControllerIntegrationTest
 
     @Test
     @WithMockUser(roles = "ADMIN", username = "46622977")
-    void getMembershipsByDateInvalidRequestParametersTest() throws Exception
+    void getMembershipsByDate_WhenInvalidParameters_ThenReturnBadRequest() throws Exception
     {
         mockMvc.perform(get("/api/v1/admin/memberships/date")
                         .param("start", "invalid")
                         .param("end", "invalid"))
                 .andExpect(status().isBadRequest());
     }
-    @Test
-    void getMembershipsByDateUnauthoriedTest() throws Exception
-    {
-        mockMvc.perform(get("/api/v1/admin/memberships/date")
-                        .param("start", "2025-01-01")
-                        .param("end", "2025-12-01"))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    @WithMockUser(roles = "STAFF", username = "12345678")
-    void getMembershipsByDateNotAuthorizedTest() throws Exception
-    {
-        mockMvc.perform(get("/api/v1/admin/memberships/date")
-                        .param("start", "2025-01-01")
-                        .param("end", "2025-12-01"))
-                .andExpect(status().isForbidden());
-    }
 
     @Test
     @WithMockUser(roles = "ADMIN", username = "46622977")
-    void getMembershipsByDniTest() throws Exception
+    void getMembershipsByDni_WhenUserHasMemberships_ThenReturnOkWithList() throws Exception
     {
         String dni = "87654321";
-        mockMvc.perform(get("/api/v1/admin/memberships/{dni}", dni))
+
+        mockMvc.perform(get("/api/v1/admin/memberships/dni/{dni}", dni))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(2))
                 .andExpect(jsonPath("$[0].user_dni").value(dni))
@@ -408,38 +330,22 @@ public class AdminControllerIntegrationTest
 
     @Test
     @WithMockUser(roles = "ADMIN", username = "46622977")
-    void getMembershipsByDniEmptyListTest() throws Exception
+    void getMembershipsByDni_WhenUserHasNoMemberships_ThenReturnEmptyList() throws Exception
     {
         String dni = "88888888";
-        mockMvc.perform(get("/api/v1/admin/memberships/{dni}", dni))
+
+        mockMvc.perform(get("/api/v1/admin/memberships/dni/{dni}", dni))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(0));
     }
 
     @Test
-    void getMembershipsByDniUnauthorizedTest() throws Exception
-    {
-        String dni = "87654321";
-        mockMvc.perform(get("/api/v1/admin/memberships/all/{dni}", dni))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    @WithMockUser(roles = "STAFF", username = "12345678")
-    void getMembershipsByDniNotAuthorizedTest() throws Exception
-    {
-        String dni = "87654321";
-        mockMvc.perform(get("/api/v1/admin/memberships/all/{dni}", dni))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
     @WithMockUser(roles = "ADMIN", username = "46622977")
-    void getLastMembershipByDniTest() throws Exception
+    void getLastMembershipByDni_WhenMembershipExists_ThenReturnOkWithMembership() throws Exception
     {
         String dni = "87654321";
 
-        mockMvc.perform(get("/api/v1/admin/membership/last/{dni}", dni))
+        mockMvc.perform(get("/api/v1/admin/membership/dni/{dni}/last", dni))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.user_dni").value(dni))
                 .andExpect(jsonPath("$.type").value("ANNUALLY"))
@@ -449,33 +355,17 @@ public class AdminControllerIntegrationTest
 
     @Test
     @WithMockUser(roles = "ADMIN", username = "46622977")
-    void getLastMembershipByDniNotFoundTest() throws Exception
+    void getLastMembershipByDni_WhenMembershipDoesNotExist_ThenReturnNotFound() throws Exception
     {
         String dni = "88888888";
-        mockMvc.perform(get("/api/v1/admin/membership/last/{dni}", dni))
+
+        mockMvc.perform(get("/api/v1/admin/membership/dni/{dni}/last", dni))
                 .andExpect(status().isNotFound());
     }
 
     @Test
-    void getLastMembershipByDniUnauthorizedTest() throws Exception
-    {
-        String dni = "87654321";
-        mockMvc.perform(get("/api/v1/admin/membership/last/{dni}", dni))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    @WithMockUser(roles = "STAFF", username = "12345678")
-    void getLastMembershipByDniNotAuthorizedTest() throws Exception
-    {
-        String dni = "87654321";
-        mockMvc.perform(get("/api/v1/admin/membership/last/{dni}", dni))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
     @WithMockUser(roles = "ADMIN", username = "46622977")
-    void getActiveMembershipsTest() throws Exception
+    void getActiveMemberships_WhenActiveMembershipsExist_ThenReturnOkWithList() throws Exception
     {
         mockMvc.perform(get("/api/v1/admin/memberships/active"))
                 .andExpect(status().isOk())
@@ -485,10 +375,9 @@ public class AdminControllerIntegrationTest
 
     @Test
     @WithMockUser(roles = "ADMIN", username = "46622977")
-    void getActiveMembershipsEmptyListTest() throws Exception
+    void getActiveMemberships_WhenNoActiveMemberships_ThenReturnOkWithEmptyList() throws Exception
     {
-        List<MembershipEntity> memberships = membershipRepository.findAllByStatus(MembershipStatus.ACTIVE);
-        membershipRepository.deleteAll(memberships);
+        membershipRepository.deleteAll(membershipRepository.findAllByStatus(MembershipStatus.ACTIVE));
 
         mockMvc.perform(get("/api/v1/admin/memberships/active"))
                 .andExpect(status().isOk())
@@ -496,26 +385,12 @@ public class AdminControllerIntegrationTest
     }
 
     @Test
-    void getActiveMembershipsUnauthorizedTest() throws Exception
-    {
-        mockMvc.perform(get("/api/v1/admin/memberships/active"))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    @WithMockUser(roles = "STAFF", username = "12345678")
-    void getActiveMembershipsNotAuthorizedTest() throws Exception
-    {
-        mockMvc.perform(get("/api/v1/admin/memberships/active"))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
     @WithMockUser(roles = "ADMIN", username = "46622977")
-    void updateMembershipStatusByIdTest() throws Exception
+    void updateMembershipStatusById_WhenMembershipExists_ThenReturnOkWithUpdatedStatus() throws Exception
     {
         int id = 2;
         MembershipStatusRequestDTO requestDTO = new MembershipStatusRequestDTO(MembershipStatus.ACTIVE);
+
         mockMvc.perform(patch("/api/v1/admin/membership/{id}/status", id)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDTO)))
@@ -526,10 +401,11 @@ public class AdminControllerIntegrationTest
 
     @Test
     @WithMockUser(roles = "ADMIN", username = "46622977")
-    void updateMembershipStatusByIdUserNotFoundTest() throws Exception
+    void updateMembershipStatusById_WhenMembershipDoesNotExist_ThenReturnNotFound() throws Exception
     {
         int id = -1;
         MembershipStatusRequestDTO requestDTO = new MembershipStatusRequestDTO(MembershipStatus.ACTIVE);
+
         mockMvc.perform(patch("/api/v1/admin/membership/{id}/status", id)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDTO)))
@@ -538,10 +414,11 @@ public class AdminControllerIntegrationTest
 
     @Test
     @WithMockUser(roles = "ADMIN", username = "46622977")
-    void updateMembershipStatusByIdInvalidDTOTest() throws Exception
+    void updateMembershipStatusById_WhenInvalidDTO_ThenReturnBadRequest() throws Exception
     {
         int id = 1;
         MembershipStatusRequestDTO requestDTO = new MembershipStatusRequestDTO(null);
+
         mockMvc.perform(patch("/api/v1/admin/membership/{id}/status", id)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDTO)))
@@ -549,69 +426,32 @@ public class AdminControllerIntegrationTest
     }
 
     @Test
-    void updateMembershipStatusByIdUnauthorizedTest() throws Exception
-    {
-        int id = 1;
-        MembershipStatusRequestDTO requestDTO = new MembershipStatusRequestDTO(MembershipStatus.ACTIVE);
-        mockMvc.perform(patch("/api/v1/admin/membership/{id}/status", id)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(requestDTO)))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    @WithMockUser(roles = "USER", username = "87654321")
-    void updateMembershipStatusByIdNotAuthorizedTest() throws Exception
-    {
-        int id = 1;
-        MembershipStatusRequestDTO requestDTO = new MembershipStatusRequestDTO(MembershipStatus.INACTIVE);
-        mockMvc.perform(patch("/api/v1/admin/membership/{id}/status", id)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(requestDTO)))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
     @WithMockUser(roles = "ADMIN", username = "46622977")
-    void deleteAllMembershipsByDniTest() throws Exception
+    void deleteMembershipsByDni_WhenMembershipsExist_ThenReturnOkWithMessage() throws Exception
     {
         String dni = "87654321";
-        mockMvc.perform(delete("/api/v1/admin/memberships/{dni}", dni))
+
+        mockMvc.perform(delete("/api/v1/admin/memberships/dni/{dni}", dni))
                 .andExpect(status().isOk())
-                .andExpect(content().string("Memberships with DNI " + dni + " successfully deleted."));
+                .andExpect(content().string("Memberships with dni " + dni + " successfully deleted."));
     }
 
     @Test
     @WithMockUser(roles = "ADMIN", username = "46622977")
-    void deleteAllMembershipsByDniEmptyListTest() throws Exception
+    void deleteMembershipsByDni_WhenNoMembershipsExist_ThenReturnNotFound() throws Exception
     {
-        String dni = "87654321";
-        mockMvc.perform(delete("/api/v1/admin/memberships/{dni}", dni))
-                .andExpect(status().isOk());
-    }
+        String dni = "88888888";
 
-    @Test
-    void deleteAllMembershipsByDniUnauthorizedTest() throws Exception
-    {
-        String dni = "87654321";
-        mockMvc.perform(delete("/api/v1/admin/membership/all/{dni}", dni))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    @WithMockUser(roles = "STAFF", username = "12345678")
-    void deleteAllMembershipsByDniNotAuthorizedTest() throws Exception
-    {
-        String dni = "87654321";
-        mockMvc.perform(delete("/api/v1/admin/membership/all/{dni}", dni))
-                .andExpect(status().isForbidden());
+        mockMvc.perform(delete("/api/v1/admin/memberships/dni/{dni}", dni))
+                .andExpect(status().isNotFound());
     }
 
     @Test
     @WithMockUser(roles = "ADMIN", username = "46622977")
-    void deleteMembershipByIdTest() throws Exception
+    void deleteMembershipById_WhenMembershipExists_ThenReturnOkWithMessage() throws Exception
     {
         int id = 1;
+
         mockMvc.perform(delete("/api/v1/admin/membership/{id}", id))
                 .andExpect(status().isOk())
                 .andExpect(content().string("Membership with id " + id + " successfully deleted."));
@@ -619,27 +459,71 @@ public class AdminControllerIntegrationTest
 
     @Test
     @WithMockUser(roles = "ADMIN", username = "46622977")
-    void deleteMembershipByIdNotFoundTest() throws Exception
+    void deleteMembershipById_WhenMembershipDoesNotExist_ThenReturnNotFound() throws Exception
     {
         int id = -1;
+
         mockMvc.perform(delete("/api/v1/admin/membership/{id}", id))
                 .andExpect(status().isNotFound());
     }
 
-    @Test
-    void deleteMembershipByIdUnauthorizedTest() throws Exception
+
+
+    /*
+
+           Unauthorized and Forbidden Tests
+
+     */
+
+
+
+    @ParameterizedTest
+    @CsvSource({
+            "/api/v1/admin, GET",
+            "/api/v1/admin/users, GET",
+            "/api/v1/admin/user/2, DELETE",
+            "/api/v1/admin/user/dni/87654321, GET",
+            "/api/v1/admin/user/dni/87654321, DELETE",
+            "/api/v1/admin/user/dni/87654321/role, PATCH",
+            "/api/v1/admin/memberships/active, GET",
+            "/api/v1/admin/memberships/dni/87654321, GET",
+            "/api/v1/admin/membership/dni/87654321, POST",
+            "/api/v1/admin/membership/dni/87654321, DELETE",
+            "/api/v1/admin/membership/dni/87654321/last, GET",
+            "/api/v1/admin/membership/dni/date, GET",
+            "/api/v1/admin/membership/1, GET",
+            "/api/v1/admin/membership/1, DELETE",
+            "/api/v1/admin/membership/1/status, PATCH"
+    })
+    @WithMockUser(roles = "USER", username = "87654321")
+    void accessStaffUrls_WhenUserDoesNotHaveAdminRole_ThenReturnForbidden(String url, HttpMethod method) throws Exception
     {
-        int id = 1;
-        mockMvc.perform(delete("/api/v1/admin/membership/{id}", id))
+        mockMvc.perform(MockMvcRequestBuilders.request(method, url))
+                .andExpect(status().isForbidden());
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "/api/v1/admin, GET",
+            "/api/v1/admin/users, GET",
+            "/api/v1/admin/user/2, DELETE",
+            "/api/v1/admin/user/dni/87654321, GET",
+            "/api/v1/admin/user/dni/87654321, DELETE",
+            "/api/v1/admin/user/dni/87654321/role, PATCH",
+            "/api/v1/admin/memberships/active, GET",
+            "/api/v1/admin/memberships/dni/87654321, GET",
+            "/api/v1/admin/membership/dni/87654321, POST",
+            "/api/v1/admin/membership/dni/87654321, DELETE",
+            "/api/v1/admin/membership/dni/87654321/last, GET",
+            "/api/v1/admin/membership/dni/date, GET",
+            "/api/v1/admin/membership/1, GET",
+            "/api/v1/admin/membership/1, DELETE",
+            "/api/v1/admin/membership/1/status, PATCH"
+    })
+    void accessAdminUrls_WhenAnonymousUser_ThenReturnUnauthorized(String url, HttpMethod method) throws Exception
+    {
+        mockMvc.perform(MockMvcRequestBuilders.request(method, url))
                 .andExpect(status().isUnauthorized());
     }
 
-    @Test
-    @WithMockUser(roles = "STAFF", username = "12345678")
-    void deleteMembershipByIdNotAuthorizedTest() throws Exception
-    {
-        int id = 1;
-        mockMvc.perform(delete("/api/v1/admin/membership/{id}", id))
-                .andExpect(status().isForbidden());
-    }
 }

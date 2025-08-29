@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.project.gym.dto.AuthRequestDTO;
 import com.project.gym.dto.RegisterRequestDTO;
 import com.project.gym.entity.UserEntity;
+import com.project.gym.entity.enums.Gender;
 import com.project.gym.repository.UserRepository;
 import com.project.gym.service.JwtService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -44,11 +45,12 @@ public class AuthControllerIntegrationTest
 
 
     @Test
-    void registerTest() throws Exception
+    void register_WhenValidRequest_ThenReturnCreated() throws Exception
     {
         RegisterRequestDTO requestDTO = new RegisterRequestDTO(
                 "99999999",
                 "Abc123!!",
+                Gender.MALE,
                 "Angelo",
                 "Rochista"
         );
@@ -60,11 +62,12 @@ public class AuthControllerIntegrationTest
     }
 
     @Test
-    void registerInvalidDTOTest() throws Exception
+    void register_WhenInvalidRequest_ThenReturnBadRequest() throws Exception
     {
         RegisterRequestDTO requestDTO = new RegisterRequestDTO(
                 null,
                 null,
+                Gender.MALE,
                 "Angelo",
                 "Rochista"
         );
@@ -76,11 +79,12 @@ public class AuthControllerIntegrationTest
     }
 
     @Test
-    void registerUserAlreadyRegisteredTest() throws Exception
+    void register_WhenUserAlreadyExists_ThenReturnConflict() throws Exception
     {
         RegisterRequestDTO requestDTO = new RegisterRequestDTO(
                 "46622977",
                 "Gordomono8!",
+                Gender.MALE,
                 "Lorenzo",
                 "Sarlo"
         );
@@ -92,7 +96,7 @@ public class AuthControllerIntegrationTest
     }
 
     @Test
-    void authenticateTest() throws Exception
+    void authenticate_WhenValidCredentials_ThenReturnOk() throws Exception
     {
         AuthRequestDTO requestDTO = new AuthRequestDTO(
                 "46622977",
@@ -106,7 +110,7 @@ public class AuthControllerIntegrationTest
     }
 
     @Test
-    void authenticateIncorrectCredentialsTest() throws Exception
+    void authenticate_WhenInvalidCredentials_ThenReturnUnauthorized() throws Exception
     {
         AuthRequestDTO requestDTO = new AuthRequestDTO(
                 "46622977",
@@ -120,7 +124,7 @@ public class AuthControllerIntegrationTest
     }
 
     @Test
-    void authenticateInvalidDTOTest() throws Exception
+    void authenticate_WhenMissingCredentials_ThenReturnBadRequest() throws Exception
     {
         AuthRequestDTO requestDTO = new AuthRequestDTO(
                 null,
@@ -134,7 +138,7 @@ public class AuthControllerIntegrationTest
     }
 
     @Test
-    void refreshTest() throws Exception
+    void refresh_WhenValidRefreshToken_ThenReturnNewAccessToken() throws Exception
     {
         UserEntity user = userRepository.findByDni("87654321")
                 .orElseThrow(() -> new UsernameNotFoundException("User not found."));
@@ -149,7 +153,7 @@ public class AuthControllerIntegrationTest
     }
 
     @Test
-    void refreshMissingTokenTest() throws Exception
+    void refresh_WhenMissingToken_ThenReturnUnauthorized() throws Exception
     {
         mockMvc.perform(post("/api/v1/auth/refresh")
                         .header(HttpHeaders.AUTHORIZATION, ""))
@@ -157,7 +161,7 @@ public class AuthControllerIntegrationTest
     }
 
     @Test
-    void refreshUserNotFoundTest() throws Exception
+    void refresh_WhenUserDoesNotExist_ThenReturnNotFound() throws Exception
     {
         UserEntity user = userRepository.findByDni("87654321")
                 .orElseThrow(() -> new UsernameNotFoundException("User not found."));
@@ -168,5 +172,18 @@ public class AuthControllerIntegrationTest
         mockMvc.perform(post("/api/v1/auth/refresh")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + refreshToken))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void refresh_WhenIsNotRefreshToken_ThenReturnUnauthorized() throws Exception
+    {
+        UserEntity user = userRepository.findByDni("87654321")
+                .orElseThrow(() -> new UsernameNotFoundException("User not found."));
+
+        String accessToken = jwtService.generateAccessToken(user);
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isUnauthorized());
     }
 }

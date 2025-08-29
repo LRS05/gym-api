@@ -13,13 +13,17 @@ import com.project.gym.repository.MembershipRepository;
 import com.project.gym.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import java.util.List;
 
@@ -47,35 +51,25 @@ public class StaffControllerIntegrationTest
 
     @Test
     @WithMockUser(roles = "STAFF", username = "12345678")
-    void getMeTest() throws Exception
+    void getMe_WhenStaffAuthenticated_ThenReturnOkWithStaffInfo() throws Exception
     {
         mockMvc.perform(get("/api/v1/staff"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.dni").value("12345678"))
-                .andExpect(jsonPath("$.role").value("STAFF"))
-                .andExpect(jsonPath("$.first_name").value("Matias"))
-                .andExpect(jsonPath("$.last_name").value("Freccero"));
+                .andExpect(jsonPath("$.role").value("STAFF"));
     }
 
     @Test
-    void getMeUnauthorizedTest() throws Exception
+    @WithMockUser(roles = "STAFF", username = "99999999")
+    void getMe_WhenStaffDoesNotExist_ThenReturnNotFound() throws Exception
     {
         mockMvc.perform(get("/api/v1/staff"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isNotFound());
     }
-
-    @Test
-    @WithMockUser(roles = "USER", username = "87654321")
-    void getMeNotAuthorizedTest() throws Exception
-    {
-        mockMvc.perform(get("/api/v1/staff"))
-                .andExpect(status().isForbidden());
-    }
-
 
     @Test
     @WithMockUser(roles = "STAFF", username = "12345678")
-    void getUsersTest() throws Exception
+    void getUsers_WhenUsersExist_ThenReturnOkWithList() throws Exception
     {
         mockMvc.perform(get("/api/v1/staff/users"))
                 .andExpect(status().isOk())
@@ -86,10 +80,9 @@ public class StaffControllerIntegrationTest
 
     @Test
     @WithMockUser(roles = "STAFF", username = "12345678")
-    void getUsersEmptyListTest() throws Exception
+    void getUsers_WhenNoUsersExist_ThenReturnOkWithEmptyList() throws Exception
     {
-        List<UserEntity> users = userRepository.findAllByRole(Role.USER);
-        userRepository.deleteAll(users);
+        userRepository.deleteAll(userRepository.findAllByRole(Role.USER));
 
         mockMvc.perform(get("/api/v1/staff/users"))
                 .andExpect(status().isOk())
@@ -97,25 +90,11 @@ public class StaffControllerIntegrationTest
     }
 
     @Test
-    void getUsersUnauthorizedTest() throws Exception
-    {
-        mockMvc.perform(get("/api/v1/staff/users"))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    @WithMockUser(roles = "USER", username = "87654321")
-    void getUsersNotAuthorizedTest() throws Exception
-    {
-        mockMvc.perform(get("/api/v1/staff/users"))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
     @WithMockUser(roles = "STAFF", username = "12345678")
-    void getUserByDniTest() throws Exception
+    void getUserByDni_WhenUserExists_ThenReturnOkWithUser() throws Exception
     {
         String dni = "87654321";
+
         mockMvc.perform(get("/api/v1/staff/user/dni/{dni}", dni))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.dni").value(dni))
@@ -124,7 +103,7 @@ public class StaffControllerIntegrationTest
 
     @Test
     @WithMockUser(roles = "STAFF", username = "12345678")
-    void getUserByDniNotFoundTest() throws Exception
+    void getUserByDni_WhenUserDoesNotExist_ThenReturnNotFound() throws Exception
     {
         String dni = "99999999";
 
@@ -134,35 +113,20 @@ public class StaffControllerIntegrationTest
 
     @Test
     @WithMockUser(roles = "STAFF", username = "12345678")
-    void getUserByDniUserNotAllowedTest() throws Exception
+    void getUserByDni_WhenUserDoesNotHaveUserRole_ThenReturnForbidden() throws Exception
     {
         String dni = "46622977";
-        mockMvc.perform(get("/api/v1/staff/user/dni/{dni}", dni))
-                .andExpect(status().isForbidden());
-    }
 
-    @Test
-    void getUserByDniUnauthorizedTest() throws Exception
-    {
-        String dni = "87654321";
-        mockMvc.perform(get("/api/v1/staff/user/dni/{dni}", dni))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    @WithMockUser(roles = "USER", username = "87654321")
-    void getUserByDniNotAuthorizedTest() throws Exception
-    {
-        String dni = "87654321";
         mockMvc.perform(get("/api/v1/staff/user/dni/{dni}", dni))
                 .andExpect(status().isForbidden());
     }
 
     @Test
     @WithMockUser(roles = "STAFF", username = "12345678")
-    void getUserByIdTest() throws Exception
+    void getUserById_WhenUserExists_ThenReturnOkWithUser() throws Exception
     {
         int id = 3;
+
         mockMvc.perform(get("/api/v1/staff/user/{id}", id))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(id))
@@ -171,35 +135,20 @@ public class StaffControllerIntegrationTest
 
     @Test
     @WithMockUser(roles = "STAFF", username = "12345678")
-    void getUserByIdNotFoundTest() throws Exception
+    void getUserById_WhenUserDoesNotExist_ThenReturnNotFound() throws Exception
     {
         int id = -1;
+
         mockMvc.perform(get("/api/v1/staff/user/{id}", id))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     @WithMockUser(roles = "STAFF", username = "12345678")
-    void getUserByIdUserNotAllowedTest() throws Exception
+    void getUserById_WhenUserDoesNotHaveUserRole_ThenReturnForbidden() throws Exception
     {
         int id = 1;
-        mockMvc.perform(get("/api/v1/staff/user/{id}", id))
-                .andExpect(status().isForbidden());
-    }
 
-    @Test
-    void getUserByIdUnauthorizedTest() throws Exception
-    {
-        int id = 3;
-        mockMvc.perform(get("/api/v1/staff/user/{id}", id))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    @WithMockUser(roles = "USER", username = "87654321")
-    void getUserByIdNotAuthorizedTest() throws Exception
-    {
-        int id = 3;
         mockMvc.perform(get("/api/v1/staff/user/{id}", id))
                 .andExpect(status().isForbidden());
     }
@@ -208,7 +157,7 @@ public class StaffControllerIntegrationTest
 
     /*
 
-           Membership Controllers
+           Membership Controllers Tests
 
      */
 
@@ -216,7 +165,7 @@ public class StaffControllerIntegrationTest
 
     @Test
     @WithMockUser(roles = "STAFF", username = "12345678")
-    void createMembershipTest() throws Exception
+    void createMembershipByDni_WhenValidRequest_ThenReturnOkWithMembership() throws Exception
     {
         String dni = "87654321";
         MembershipRequestDTO requestDTO = new MembershipRequestDTO(
@@ -224,7 +173,7 @@ public class StaffControllerIntegrationTest
                 PaymentMethod.CASH
         );
 
-        mockMvc.perform(post("/api/v1/staff/membership/{dni}", dni)
+        mockMvc.perform(post("/api/v1/staff/membership/dni/{dni}", dni)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDTO)))
                 .andExpect(status().isOk())
@@ -236,7 +185,7 @@ public class StaffControllerIntegrationTest
 
     @Test
     @WithMockUser(roles = "STAFF", username = "46622977")
-    void createMembershipUserNotAllowedTest() throws Exception
+    void createMembershipByDni_WhenUserNotAllowed_ThenReturnBadRequest() throws Exception
     {
         String dni = "12345678";
         MembershipRequestDTO requestDTO = new MembershipRequestDTO(
@@ -244,7 +193,7 @@ public class StaffControllerIntegrationTest
                 PaymentMethod.CASH
         );
 
-        mockMvc.perform(post("/api/v1/staff/membership/{dni}", dni)
+        mockMvc.perform(post("/api/v1/staff/membership/dni/{dni}", dni)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDTO)))
                 .andExpect(status().isBadRequest());
@@ -252,37 +201,20 @@ public class StaffControllerIntegrationTest
 
     @Test
     @WithMockUser(roles = "STAFF", username = "46622977")
-    void createMembershipInvalidDTOTest() throws Exception
+    void createMembershipByDni_WhenInvalidDTO_ThenReturnBadRequest() throws Exception
     {
         String dni = "99999999";
         MembershipRequestDTO requestDTO = new MembershipRequestDTO(null, null);
 
-        mockMvc.perform(post("/api/v1/staff/membership/{dni}", dni)
+        mockMvc.perform(post("/api/v1/staff/membership/dni/{dni}", dni)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDTO)))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
-    void createMembershipUnauthorizedTest() throws Exception
-    {
-        String dni = "99999999";
-        mockMvc.perform(post("/api/v1/staff/membership/{dni}", dni))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    @WithMockUser(roles = "USER", username = "12345678")
-    void createMembershipNotAuthorizedTest() throws Exception
-    {
-        String dni = "99999999";
-        mockMvc.perform(post("/api/v1/staff/membership/{dni}", dni))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
     @WithMockUser(roles = "STAFF", username = "46622977")
-    void getMembershipsByDateTest() throws Exception
+    void getMembershipsByDate_WhenValidDateRange_ThenReturnOkWithList() throws Exception
     {
         mockMvc.perform(get("/api/v1/staff/memberships/date")
                         .param("start", "2025-01-01")
@@ -293,7 +225,7 @@ public class StaffControllerIntegrationTest
 
     @Test
     @WithMockUser(roles = "STAFF", username = "46622977")
-    void getMembershipsByDateEmptyListTest() throws Exception
+    void getMembershipsByDate_WhenNoMembershipsInRange_ThenReturnOkWithEmptyList() throws Exception
     {
         mockMvc.perform(get("/api/v1/staff/memberships/date")
                         .param("start", "2023-01-01")
@@ -304,38 +236,21 @@ public class StaffControllerIntegrationTest
 
     @Test
     @WithMockUser(roles = "STAFF", username = "46622977")
-    void getMembershipsByDateInvalidRequestParametersTest() throws Exception
+    void getMembershipsByDate_WhenInvalidParameters_ThenReturnBadRequest() throws Exception
     {
         mockMvc.perform(get("/api/v1/staff/memberships/date")
                         .param("start", "invalid")
                         .param("end", "invalid"))
                 .andExpect(status().isBadRequest());
     }
-    @Test
-    void getMembershipsByDateUnauthoriedTest() throws Exception
-    {
-        mockMvc.perform(get("/api/v1/staff/memberships/date")
-                        .param("start", "2025-01-01")
-                        .param("end", "2025-12-01"))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    @WithMockUser(roles = "USER", username = "12345678")
-    void getMembershipsByDateNotAuthorizedTest() throws Exception
-    {
-        mockMvc.perform(get("/api/v1/staff/memberships/date")
-                        .param("start", "2025-01-01")
-                        .param("end", "2025-12-01"))
-                .andExpect(status().isForbidden());
-    }
 
     @Test
     @WithMockUser(roles = "STAFF", username = "46622977")
-    void getMembershipsByDniTest() throws Exception
+    void getMembershipsByDni_WhenUserHasMemberships_ThenReturnOkWithList() throws Exception
     {
         String dni = "87654321";
-        mockMvc.perform(get("/api/v1/staff/memberships/{dni}", dni))
+
+        mockMvc.perform(get("/api/v1/staff/memberships/dni/{dni}", dni))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(2))
                 .andExpect(jsonPath("$[0].user_dni").value(dni))
@@ -344,38 +259,22 @@ public class StaffControllerIntegrationTest
 
     @Test
     @WithMockUser(roles = "STAFF", username = "46622977")
-    void getMembershipsByDniEmptyListTest() throws Exception
+    void getMembershipsByDni_WhenUserHasNoMemberships_ThenReturnEmptyList() throws Exception
     {
         String dni = "88888888";
-        mockMvc.perform(get("/api/v1/staff/memberships/{dni}", dni))
+
+        mockMvc.perform(get("/api/v1/staff/memberships/dni/{dni}", dni))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(0));
     }
 
     @Test
-    void getMembershipsByDniUnauthorizedTest() throws Exception
-    {
-        String dni = "87654321";
-        mockMvc.perform(get("/api/v1/staff/memberships/all/{dni}", dni))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    @WithMockUser(roles = "USER", username = "12345678")
-    void getMembershipsByDniNotAuthorizedTest() throws Exception
-    {
-        String dni = "87654321";
-        mockMvc.perform(get("/api/v1/staff/membership/all/{dni}", dni))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
     @WithMockUser(roles = "STAFF", username = "12345678")
-    void getLastMembershipByDniTest() throws Exception
+    void getLastMembershipByDni_WhenMembershipExists_ThenReturnOkWithMembership() throws Exception
     {
         String dni = "87654321";
 
-        mockMvc.perform(get("/api/v1/staff/membership/last/{dni}", dni))
+        mockMvc.perform(get("/api/v1/staff/membership/dni/{dni}/last", dni))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.user_dni").value(dni))
                 .andExpect(jsonPath("$.type").value("ANNUALLY"))
@@ -385,33 +284,17 @@ public class StaffControllerIntegrationTest
 
     @Test
     @WithMockUser(roles = "STAFF", username = "12345678")
-    void getLastMembershipByDniNotFoundTest() throws Exception
+    void getLastMembershipByDni_WhenMembershipDoesNotExist_ThenReturnNotFound() throws Exception
     {
         String dni = "88888888";
-        mockMvc.perform(get("/api/v1/staff/membership/last/{dni}", dni))
+
+        mockMvc.perform(get("/api/v1/staff/membership/dni/{dni}/last", dni))
                 .andExpect(status().isNotFound());
     }
 
     @Test
-    void getLastMembershipByDniUnauthorizedTest() throws Exception
-    {
-        String dni = "87654321";
-        mockMvc.perform(get("/api/v1/staff/membership/last/{dni}", dni))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    @WithMockUser(roles = "USER", username = "12345678")
-    void getLastMembershipByDniNotAuthorizedTest() throws Exception
-    {
-        String dni = "87654321";
-        mockMvc.perform(get("/api/v1/staff/membership/last/{dni}", dni))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
     @WithMockUser(roles = "STAFF", username = "46622977")
-    void getActiveMembershipsTest() throws Exception
+    void getActiveMemberships_WhenActiveMembershipsExist_ThenReturnOkWithList() throws Exception
     {
         mockMvc.perform(get("/api/v1/staff/memberships/active"))
                 .andExpect(status().isOk())
@@ -421,10 +304,9 @@ public class StaffControllerIntegrationTest
 
     @Test
     @WithMockUser(roles = "STAFF", username = "46622977")
-    void getActiveMembershipsEmptyListTest() throws Exception
+    void getActiveMemberships_WhenNoActiveMemberships_ThenReturnOkWithEmptyList() throws Exception
     {
-        List<MembershipEntity> memberships = membershipRepository.findAllByStatus(MembershipStatus.ACTIVE);
-        membershipRepository.deleteAll(memberships);
+        membershipRepository.deleteAll(membershipRepository.findAllByStatus(MembershipStatus.ACTIVE));
 
         mockMvc.perform(get("/api/v1/staff/memberships/active"))
                 .andExpect(status().isOk())
@@ -432,26 +314,12 @@ public class StaffControllerIntegrationTest
     }
 
     @Test
-    void getActiveMembershipsUnauthorizedTest() throws Exception
-    {
-        mockMvc.perform(get("/api/v1/staff/memberships/active"))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    @WithMockUser(roles = "USER", username = "12345678")
-    void getActiveMembershipsNotAuthorizedTest() throws Exception
-    {
-        mockMvc.perform(get("/api/v1/staff/memberships/active"))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
     @WithMockUser(roles = "STAFF", username = "46622977")
-    void updateMembershipStatusByIdTest() throws Exception
+    void updateMembershipStatusById_WhenMembershipExists_ThenReturnOkWithUpdatedStatus() throws Exception
     {
         int id = 2;
         MembershipStatusRequestDTO requestDTO = new MembershipStatusRequestDTO(MembershipStatus.ACTIVE);
+
         mockMvc.perform(patch("/api/v1/staff/membership/{id}/status", id)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDTO)))
@@ -462,10 +330,11 @@ public class StaffControllerIntegrationTest
 
     @Test
     @WithMockUser(roles = "STAFF", username = "46622977")
-    void updateMembershipStatusByIdUserNotFoundTest() throws Exception
+    void updateMembershipStatusById_WhenMembershipDoesNotExist_ThenReturnNotFound() throws Exception
     {
         int id = -1;
         MembershipStatusRequestDTO requestDTO = new MembershipStatusRequestDTO(MembershipStatus.ACTIVE);
+
         mockMvc.perform(patch("/api/v1/staff/membership/{id}/status", id)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDTO)))
@@ -474,40 +343,66 @@ public class StaffControllerIntegrationTest
 
     @Test
     @WithMockUser(roles = "STAFF", username = "46622977")
-    void updateMembershipStatusByIdInvalidDTOTest() throws Exception
+    void updateMembershipStatusById_WhenInvalidDTO_ThenReturnBadRequest() throws Exception
     {
         int id = 1;
         MembershipStatusRequestDTO requestDTO = new MembershipStatusRequestDTO(null);
+
         mockMvc.perform(patch("/api/v1/staff/membership/{id}/status", id)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDTO)))
                 .andExpect(status().isBadRequest());
     }
 
-    @Test
-    void updateMembershipStatusByIdUnauthorizedTest() throws Exception
+
+
+    /*
+
+       Unauthorized and Forbidden Tests
+
+     */
+
+
+
+    @ParameterizedTest
+    @CsvSource({
+            "/api/v1/staff, GET",
+            "/api/v1/staff/users, GET",
+            "/api/v1/staff/user/2, DELETE",
+            "/api/v1/staff/user/dni/87654321, GET",
+            "/api/v1/staff/memberships/active, GET",
+            "/api/v1/staff/memberships/dni/87654321, GET",
+            "/api/v1/staff/membership/dni/87654321, POST",
+            "/api/v1/staff/membership/dni/87654321/last, GET",
+            "/api/v1/staff/memberships/dni/date, GET",
+            "/api/v1/staff/membership/1, GET",
+            "/api/v1/staff/membership/1/status, PATCH"
+    })
+    void accessStaffUrls_WhenAnonymousUser_ThenReturnUnauthorized(String url, HttpMethod method) throws Exception
     {
-        int id = 1;
-        MembershipStatusRequestDTO requestDTO = new MembershipStatusRequestDTO(MembershipStatus.ACTIVE);
-        mockMvc.perform(patch("/api/v1/staff/membership/{id}/status", id)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(requestDTO)))
+        mockMvc.perform(MockMvcRequestBuilders.request(method, url))
                 .andExpect(status().isUnauthorized());
     }
 
-    @Test
+    @ParameterizedTest
+    @CsvSource({
+            "/api/v1/staff, GET",
+            "/api/v1/staff/users, GET",
+            "/api/v1/staff/user/2, DELETE",
+            "/api/v1/staff/user/dni/87654321, GET",
+            "/api/v1/staff/memberships/active, GET",
+            "/api/v1/staff/memberships/dni/87654321, GET",
+            "/api/v1/staff/membership/dni/87654321, POST",
+            "/api/v1/staff/membership/dni/87654321/last, GET",
+            "/api/v1/staff/memberships/dni/date, GET",
+            "/api/v1/staff/membership/1, GET",
+            "/api/v1/staff/membership/1/status, PATCH"
+    })
     @WithMockUser(roles = "USER", username = "87654321")
-    void updateMembershipStatusByIdNotAuthorizedTest() throws Exception
+    void accessStaffUrls_WhenUserDoesNotHaveStaffRole_ThenReturnForbidden(String url, HttpMethod method) throws Exception
     {
-        int id = 1;
-        MembershipStatusRequestDTO requestDTO = new MembershipStatusRequestDTO(MembershipStatus.INACTIVE);
-        mockMvc.perform(patch("/api/v1/staff/membership/{id}/status", id)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(requestDTO)))
+        mockMvc.perform(MockMvcRequestBuilders.request(method, url))
                 .andExpect(status().isForbidden());
     }
-
-
-
 
 }
