@@ -1,6 +1,6 @@
-FROM openjdk:17-jdk-slim
+FROM eclipse-temurin:17-jdk
 
-COPY target/gym-api-0.0.1.jar app.jar
+COPY target/gym-api-0.0.1.jar /app.jar
 
 EXPOSE 8080
 
