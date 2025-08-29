@@ -69,7 +69,7 @@ public class MembershipServiceTest
         when(membershipMapper.entityToDTO(expectedMembership)).thenReturn(expectedDTO);
 
         ArgumentCaptor<MembershipEntity> captor = ArgumentCaptor.forClass(MembershipEntity.class);
-        MembershipResponseDTO result = membershipService.createMembership(dni, requestDTO);
+        MembershipResponseDTO result = membershipService.createMembershipByDni(dni, requestDTO);
 
         // Then
         verify(userRepository).findByDni(dni);
@@ -98,7 +98,7 @@ public class MembershipServiceTest
 
         // When
         when(userRepository.findByDni(dni)).thenReturn(Optional.of(expectedUser));
-        assertThrows(InvalidMembershipAssignmentException.class, () -> membershipService.createMembership(dni, requestDTO));
+        assertThrows(InvalidMembershipAssignmentException.class, () -> membershipService.createMembershipByDni(dni, requestDTO));
 
         // Then
         verify(userRepository).findByDni(dni);
@@ -125,7 +125,7 @@ public class MembershipServiceTest
         when(membershipMapper.entityToDTO(expectedMembersip)).thenReturn(expectedDTO);
 
         ArgumentCaptor<MembershipEntity> captor = ArgumentCaptor.forClass(MembershipEntity.class);
-        MembershipResponseDTO result = membershipService.createMembership(dni, requestDTO);
+        MembershipResponseDTO result = membershipService.createMembershipByDni(dni, requestDTO);
 
         // Then
         verify(userRepository).findByDni(dni);
@@ -506,7 +506,7 @@ public class MembershipServiceTest
     }
 
     @Test
-    void deleteMembershipsByDni_WhenNoMembershipsExistsForUser_ThenDoNothing()
+    void deleteMembershipsByDni_WhenNoMembershipsExistsForUser_ThenThrowException()
     {
         // Given
         String dni = "99999999";
@@ -514,9 +514,8 @@ public class MembershipServiceTest
         // When
         when(membershipRepository.findAllByUserDni(dni)).thenReturn(new ArrayList<>());
 
-        membershipService.deleteMembershipsByDni(dni);
-
         // Then
+        assertThrows(MembershipNotFoundException.class, () -> membershipService.deleteMembershipsByDni(dni));
         verify(membershipRepository).findAllByUserDni(dni);
         verifyNoMoreInteractions(membershipRepository);
     }

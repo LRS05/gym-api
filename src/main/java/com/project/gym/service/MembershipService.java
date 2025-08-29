@@ -31,7 +31,7 @@ public class MembershipService
     private final MembershipMapper membershipMapper;
     private final CustomMetrics customMetrics;
 
-    public MembershipResponseDTO createMembership(String dni, MembershipRequestDTO requestDTO)
+    public MembershipResponseDTO createMembershipByDni(String dni, MembershipRequestDTO requestDTO)
     {
         MembershipEntity savedMembership = membershipRepository.save(
                 buildMembership(dni, requestDTO)
@@ -133,11 +133,13 @@ public class MembershipService
     {
         List<MembershipEntity> memberships = membershipRepository.findAllByUserDni(dni);
 
-        if (!memberships.isEmpty())
+        if (memberships.isEmpty())
         {
-            membershipRepository.deleteAll(memberships);
-            decrementMembershipsMetrics(memberships);
+            throw new MembershipNotFoundException("Memberships not found.");
         }
+
+        membershipRepository.deleteAll(memberships);
+        decrementMembershipsMetrics(memberships);
         log.info("Deleted {} memberships with user_dni={}",memberships.size(), dni);
     }
 
