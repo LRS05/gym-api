@@ -378,7 +378,7 @@ public class StaffControllerIntegrationTest
             "/api/v1/staff/membership/1, GET",
             "/api/v1/staff/membership/1/status, PATCH"
     })
-    void accessStaffUrls_WhenAnonymousUser_ThenReturnUnauthorized(String url, HttpMethod method) throws Exception
+    void accessStaffUrls_WhenUserIsNotAuthenticated_ThenReturnUnauthorized(String url, HttpMethod method) throws Exception
     {
         mockMvc.perform(MockMvcRequestBuilders.request(method, url))
                 .andExpect(status().isUnauthorized());

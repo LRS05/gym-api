@@ -520,10 +520,9 @@ public class AdminControllerIntegrationTest
             "/api/v1/admin/membership/1, DELETE",
             "/api/v1/admin/membership/1/status, PATCH"
     })
-    void accessAdminUrls_WhenAnonymousUser_ThenReturnUnauthorized(String url, HttpMethod method) throws Exception
+    void accessAdminUrls_WhenUserIsNotAuthenticated_ThenReturnUnauthorized(String url, HttpMethod method) throws Exception
     {
         mockMvc.perform(MockMvcRequestBuilders.request(method, url))
                 .andExpect(status().isUnauthorized());
     }
-
 }

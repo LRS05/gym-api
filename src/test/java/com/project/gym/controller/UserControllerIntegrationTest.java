@@ -188,7 +188,7 @@ public class UserControllerIntegrationTest
             "/api/v1/user/membership/last, GET",
             "/api/v1/user/memberships, GET",
     })
-    void accessUserUrls_WhenAnonymousUser_ThenReturnUnauthorized(String url, HttpMethod method) throws Exception
+    void accessUserUrls_WhenUserIsNotAuthenticated_ThenReturnUnauthorized(String url, HttpMethod method) throws Exception
     {
         mockMvc.perform(MockMvcRequestBuilders.request(method, url))
                 .andExpect(status().isUnauthorized());
