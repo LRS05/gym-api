@@ -115,14 +115,19 @@ public class GlobalExceptionHandler
 
 
 
+    @ExceptionHandler(CookieNotFoundException.class)
+    public ResponseEntity<Object> handleCookieNotFoundException(CookieNotFoundException e)
+    {
+        log.warn("Attempted to access a protected resource without JWT cookie");
+        return new ResponseEntity<>(e.getMessage(), HttpStatus.UNAUTHORIZED);
+    }
+
     @ExceptionHandler(InvalidAuthorizationHeaderException.class)
     public ResponseEntity<Object> handleInvalidAuthorizationHeaderException(InvalidAuthorizationHeaderException e)
     {
         log.info("Invalid Authorization header: expected a JWT token");
         return new ResponseEntity<>(e.getMessage(), HttpStatus.UNAUTHORIZED);
     }
-
-
 
     @ExceptionHandler(MissingTokenException.class)
     public ResponseEntity<Object> handleMissingTokenException(MissingTokenException e)
@@ -135,7 +140,7 @@ public class GlobalExceptionHandler
     public ResponseEntity<Object> handleInvalidTokenException(InvalidTokenException e)
     {
         log.warn("Attempted to use a invalid or expired refresh token");
-        return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<>(e.getMessage(), HttpStatus.UNAUTHORIZED);
     }
 
     @ExceptionHandler(ExpiredJwtException.class)
