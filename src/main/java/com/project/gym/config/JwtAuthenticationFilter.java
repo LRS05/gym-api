@@ -1,6 +1,7 @@
 package com.project.gym.config;
 
 import com.project.gym.entity.UserEntity;
+import com.project.gym.entity.enums.TokenType;
 import com.project.gym.repository.UserRepository;
 import com.project.gym.service.JwtService;
 import io.jsonwebtoken.JwtException;
@@ -10,7 +11,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -50,23 +50,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter
             return;
         }
 
-        String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
-        if (authHeader == null || !authHeader.startsWith("Bearer "))
+        if (request.getCookies() == null)
         {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType("application/json");
-            response.getWriter().write("{\"error\": \"Invalid Authorization Header.\"}");
+            response.getWriter().write("{\"error\": \"JWT cookie not found.\"}");
             return;
         }
 
-        String jwtToken = authHeader.substring(7);
+        String accessToken = jwtService.extractCookiesToken(request.getCookies(), TokenType.ACCESS_TOKEN);
         try
         {
-            String subject = jwtService.extractSubject(jwtToken);
-
+            String subject = jwtService.extractSubject(accessToken);
             UserEntity user = userRepository.findByDni(subject)
                     .orElseThrow(() -> new UsernameNotFoundException("User not found."));
-            if (jwtService.isTokenValid(jwtToken, user))
+            if (jwtService.isTokenValid(accessToken, user))
             {
                 UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
                         user,

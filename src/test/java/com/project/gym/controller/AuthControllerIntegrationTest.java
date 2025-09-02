@@ -7,7 +7,7 @@ import com.project.gym.entity.UserEntity;
 import com.project.gym.entity.enums.Gender;
 import com.project.gym.repository.UserRepository;
 import com.project.gym.service.JwtService;
-import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.Cookie;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +16,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -25,7 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @Transactional
 @ActiveProfiles("test")
-@AutoConfigureMockMvc
+@AutoConfigureMockMvc(addFilters = false)
 public class AuthControllerIntegrationTest
 {
     @Autowired
@@ -38,11 +39,7 @@ public class AuthControllerIntegrationTest
     private UserRepository userRepository;
 
     @Autowired
-    private HttpServletRequest httpServletRequest;
-
-    @Autowired
     private JwtService jwtService;
-
 
     @Test
     void register_WhenValidRequest_ThenReturnCreated() throws Exception
@@ -146,22 +143,35 @@ public class AuthControllerIntegrationTest
         String refreshToken = jwtService.generateRefreshToken(user);
 
         mockMvc.perform(post("/api/v1/auth/refresh")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + refreshToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.access_token").isNotEmpty())
-                .andExpect(jsonPath("$.refresh_token").isEmpty());
+                        .cookie(new Cookie("REFRESH_TOKEN", refreshToken)))
+                .andExpect(status().isNoContent())
+                .andExpect(header().exists(HttpHeaders.SET_COOKIE))
+                .andExpect(cookie().exists("ACCESS_TOKEN"));
     }
 
     @Test
-    void refresh_WhenMissingToken_ThenReturnUnauthorized() throws Exception
+    void refresh_WhenMissingCookies_ThenReturnUnauthorized() throws Exception
     {
-        mockMvc.perform(post("/api/v1/auth/refresh")
-                        .header(HttpHeaders.AUTHORIZATION, ""))
+        mockMvc.perform(post("/api/v1/auth/refresh"))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
-    void refresh_WhenUserDoesNotExist_ThenReturnNotFound() throws Exception
+    void refresh_WhenRefreshTokenCookieDoesNotExist_ThenReturnUnauthorized() throws Exception
+    {
+        UserEntity user = userRepository.findByDni("87654321")
+                .orElseThrow(() -> new UsernameNotFoundException("User not found."));
+
+        String accessToken = jwtService.generateAccessToken(user);
+
+        userRepository.delete(user);
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .cookie(new Cookie("ACCESS_TOKEN", accessToken)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void refresh_WhenUserNotFound_ThenReturnNotFound() throws Exception
     {
         UserEntity user = userRepository.findByDni("87654321")
                 .orElseThrow(() -> new UsernameNotFoundException("User not found."));
@@ -169,21 +179,35 @@ public class AuthControllerIntegrationTest
         String refreshToken = jwtService.generateRefreshToken(user);
 
         userRepository.delete(user);
+
         mockMvc.perform(post("/api/v1/auth/refresh")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + refreshToken))
+                        .cookie(new Cookie("REFRESH_TOKEN", refreshToken)))
                 .andExpect(status().isNotFound());
     }
 
     @Test
-    void refresh_WhenIsNotRefreshToken_ThenReturnUnauthorized() throws Exception
+    void refresh_WhenTokenIsInvalidOrExpired_ThenReturnUnauthorized() throws Exception
     {
-        UserEntity user = userRepository.findByDni("87654321")
-                .orElseThrow(() -> new UsernameNotFoundException("User not found."));
-
-        String accessToken = jwtService.generateAccessToken(user);
+        String invalidRefreshToken = "invalid-refresh-token";
 
         mockMvc.perform(post("/api/v1/auth/refresh")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                        .cookie(new Cookie("REFRESH_TOKEN", invalidRefreshToken)))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN", username = "46622977")
+    void logout_WhenUserIsAuthenticated_ThenReturnOk() throws Exception
+    {
+        UserEntity user = userRepository.findByDni("46622977")
+                        .orElseThrow(() -> new UsernameNotFoundException("User not found."));
+
+        String accessToken = jwtService.generateAccessToken(user);
+        String refreshToken = jwtService.generateRefreshToken(user);
+
+        mockMvc.perform(post("/api/v1/auth/logout")
+                        .cookie(new Cookie("ACCESS_TOKEN", accessToken))
+                        .cookie(new Cookie("REFRESH_TOKEN", refreshToken)))
+                .andExpect(status().isOk());
     }
 }
