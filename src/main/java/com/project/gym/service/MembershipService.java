@@ -26,6 +26,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class MembershipService
 {
+    private final WhatsappService whatsappService;
     private final MembershipRepository membershipRepository;
     private final UserRepository userRepository;
     private final MembershipMapper membershipMapper;
@@ -37,13 +38,14 @@ public class MembershipService
                 buildMembership(dni, requestDTO)
         );
 
-        incrementMembershipMetrics();
+        incrementActiveMembershipsMetrics();
+        sendMembershipCreatedMessage(savedMembership);
 
         log.info("Created a membership for the user with dni={}, type={}, payment method={}", dni, requestDTO.type(), requestDTO.paymentMethod());
         return membershipMapper.entityToDTO(savedMembership);
     }
 
-    public List<MembershipResponseDTO> getMembershipsByDate(LocalDate start, LocalDate end)
+    public List<MembershipResponseDTO> getAllByDate(LocalDate start, LocalDate end)
     {
         return membershipMapper.entityToDTO(
                 membershipRepository.findAllByPaymentDateBetween(start, end)
@@ -58,7 +60,7 @@ public class MembershipService
         );
     }
 
-    public List<MembershipResponseDTO> getMembershipsByDni(String dni)
+    public List<MembershipResponseDTO> getAllByDni(String dni)
     {
         return membershipMapper.entityToDTO(
                 membershipRepository.findAllByUserDni(dni)
@@ -73,32 +75,11 @@ public class MembershipService
         );
     }
 
-    public List<MembershipResponseDTO> getActiveMemberships()
+    public List<MembershipResponseDTO> getAllActive()
     {
         return membershipMapper.entityToDTO(
                 membershipRepository.findAllByStatus(MembershipStatus.ACTIVE)
         );
-    }
-
-    @Scheduled(cron = "0 0 12 * * ?")
-    public void deactivateMemberships()
-    {
-        List<MembershipEntity> memberships = membershipRepository
-                .findAllByStatusAndNextPaymentDateBefore(MembershipStatus.ACTIVE, LocalDate.now());
-
-        if (memberships.isEmpty())
-        {
-            log.info("SERVER: No memberships to deactivate today");
-            return;
-        }
-
-        memberships.forEach(m -> {
-            m.setStatus(MembershipStatus.INACTIVE);
-            customMetrics.decrementActiveMemberships();
-        });
-
-        membershipRepository.saveAll(memberships);
-        log.info("SERVER: Deactivated {} memberships today", memberships.size());
     }
 
     public MembershipResponseDTO updateMembershipStatusById(int id, MembershipStatusRequestDTO requestDTO)
@@ -125,11 +106,11 @@ public class MembershipService
         MembershipEntity membership = membershipRepository.findById(id)
                 .orElseThrow(() -> new MembershipNotFoundException("Membership not found."));
         membershipRepository.delete(membership);
-        decrementMembershipMetrics(membership);
+        decrementActiveMembershipMetrics(membership);
         log.info("Deleted membership with id={}", id);
     }
 
-    public void deleteMembershipsByDni(String dni)
+    public void deleteAllByDni(String dni)
     {
         List<MembershipEntity> memberships = membershipRepository.findAllByUserDni(dni);
 
@@ -139,8 +120,31 @@ public class MembershipService
         }
 
         membershipRepository.deleteAll(memberships);
-        decrementMembershipsMetrics(memberships);
+        decrementActiveMembershipsMetrics(memberships);
         log.info("Deleted {} memberships with user_dni={}",memberships.size(), dni);
+    }
+
+    @Scheduled(cron = "0 0 12 * * ?")
+    public void deactivateMemberships()
+    {
+        List<MembershipEntity> memberships = membershipRepository
+                .findAllByStatusAndNextPaymentDateBefore(MembershipStatus.ACTIVE, LocalDate.now());
+
+        memberships.forEach(this::deactivateMembership);
+
+        membershipRepository.saveAll(memberships);
+        log.info("SERVER: Deactivated {} memberships today", memberships.size());
+    }
+
+    @Scheduled(cron = "0 0 9 * * ?")
+    public void sendExpiryReminder()
+    {
+        LocalDate tomorrow = LocalDate.now().plusDays(1);
+        List<MembershipEntity> memberships = membershipRepository
+                .findAllByStatusAndNextPaymentDate(MembershipStatus.ACTIVE, tomorrow);
+
+        // If the membership owner has an account and a phone number, a WhatsApp message is sent.
+        memberships.forEach(this::sendExpiryReminderMessage);
     }
 
     private MembershipEntity buildMembership(String dni, MembershipRequestDTO requestDTO)
@@ -163,13 +167,12 @@ public class MembershipService
                 .build();
     }
 
-    private void incrementMembershipMetrics()
+    private void incrementActiveMembershipsMetrics()
     {
         customMetrics.incrementActiveMemberships();
-        customMetrics.incrementMemberships();
     }
 
-    private void decrementMembershipsMetrics(List<MembershipEntity> memberships)
+    private void decrementActiveMembershipsMetrics(List<MembershipEntity> memberships)
     {
         for (MembershipEntity m : memberships)
         {
@@ -177,17 +180,15 @@ public class MembershipService
             {
                 customMetrics.decrementActiveMemberships();
             }
-            customMetrics.decrementMemberships();
         }
     }
 
-    private void decrementMembershipMetrics(MembershipEntity membership)
+    private void decrementActiveMembershipMetrics(MembershipEntity membership)
     {
         if (membership.getStatus() == MembershipStatus.ACTIVE)
         {
             customMetrics.decrementActiveMemberships();
         }
-        customMetrics.decrementMemberships();
     }
 
     private void updateActiveMembershipMetrics(MembershipStatus status)
@@ -200,4 +201,29 @@ public class MembershipService
         customMetrics.decrementActiveMemberships();
     }
 
+    private void deactivateMembership(MembershipEntity membership)
+    {
+        membership.setStatus(MembershipStatus.INACTIVE);
+        if (membership.getUser() != null && membership.getUser().getPhoneNumber() != null)
+        {
+            whatsappService.sendMembershipExpiredMessage(membership, membership.getUser());
+        }
+        customMetrics.decrementActiveMemberships();
+    }
+
+    private void sendExpiryReminderMessage(MembershipEntity membership)
+    {
+        if (membership.getUser() != null && membership.getUser().getPhoneNumber() != null)
+        {
+            whatsappService.sendMembershipExpiryReminderMessage(membership, membership.getUser());
+        }
+    }
+
+    private void sendMembershipCreatedMessage(MembershipEntity membership)
+    {
+        if (membership.getUser() != null && membership.getUser().getPhoneNumber() != null)
+        {
+            whatsappService.sendMembershipCreatedMessage(membership, membership.getUser());
+        }
+    }
 }
