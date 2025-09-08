@@ -58,7 +58,7 @@ public class UserController
     @GetMapping("/memberships")
     public ResponseEntity<List<MembershipResponseDTO>> getMemberships(Principal principal)
     {
-        return ResponseEntity.ok(membershipService.getMembershipsByDni(principal.getName()));
+        return ResponseEntity.ok(membershipService.getAllByDni(principal.getName()));
     }
 
     @GetMapping("/membership/last")

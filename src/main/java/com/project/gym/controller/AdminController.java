@@ -88,13 +88,13 @@ public class AdminController
     @GetMapping("/memberships/date")
     public ResponseEntity<List<MembershipResponseDTO>> getMembershipsByDate(@RequestParam LocalDate start, @RequestParam LocalDate end)
     {
-        return ResponseEntity.ok(membershipService.getMembershipsByDate(start, end));
+        return ResponseEntity.ok(membershipService.getAllByDate(start, end));
     }
 
     @GetMapping("/memberships/dni/{dni}")
     public ResponseEntity<List<MembershipResponseDTO>> getMembershipsByDni(@PathVariable String dni)
     {
-        return ResponseEntity.ok(membershipService.getMembershipsByDni(dni));
+        return ResponseEntity.ok(membershipService.getAllByDni(dni));
     }
 
     @GetMapping("/membership/dni/{dni}/last")
@@ -106,7 +106,7 @@ public class AdminController
     @GetMapping("/memberships/active")
     public ResponseEntity<List<MembershipResponseDTO>> getActiveMemberships()
     {
-        return ResponseEntity.ok(membershipService.getActiveMemberships());
+        return ResponseEntity.ok(membershipService.getAllActive());
     }
 
     @PatchMapping("/membership/{id}/status")
@@ -120,7 +120,7 @@ public class AdminController
     public ResponseEntity<String> deleteMembershipsByDni(@PathVariable String dni)
     {
         log.info("Attempting to delete all the memberships with dni={}", dni);
-        membershipService.deleteMembershipsByDni(dni);
+        membershipService.deleteAllByDni(dni);
         return ResponseEntity.ok("Memberships with dni " + dni + " successfully deleted.");
     }
 
