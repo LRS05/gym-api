@@ -78,7 +78,7 @@ public class WhatsappService
         long daysToExpire = ChronoUnit.DAYS.between(LocalDate.now(), membership.getNextPaymentDate());
         return new WhatsappMessageBodyDTO(
                 user.getPhoneNumber(),
-                type.format(user, membership, daysToExpire)
+                type.format(user, membership)
         );
     }
 
@@ -90,7 +90,7 @@ public class WhatsappService
             WhatsappRequestMessageDTO requestMessageDTO = createRequestMessage(messageBody);
             createResponseMessage(requestMessageDTO);
         }
-        catch (JsonProcessingException e)
+        catch (Exception e)
         {
             log.error("Failed to send Whatsapp {} message for user {} and membership {}", type.name(), user.getDni(), membership.getId(), e);
         }
