@@ -21,8 +21,8 @@ public class UserTestDataFactory
                 .gender(Gender.MALE)
                 .firstName("Lorenzo")
                 .lastName("Sarlo")
+                .phoneNumber("542345511370")
                 .creationDate(LocalDate.of(2025, 1, 1))
-                .memberships(null)
                 .build();
     }
 
@@ -37,8 +37,8 @@ public class UserTestDataFactory
                 .gender(Gender.MALE)
                 .firstName("Matias")
                 .lastName("Freccero")
+                .phoneNumber("542345511370")
                 .creationDate(LocalDate.of(2025, 1, 1))
-                .memberships(null)
                 .build();
     }
 
@@ -53,8 +53,8 @@ public class UserTestDataFactory
                 .gender(Gender.MALE)
                 .firstName("Franco")
                 .lastName("Cataldi")
+                .phoneNumber("542345511370")
                 .creationDate(LocalDate.of(2025, 1, 1))
-                .memberships(null)
                 .build();
     }
 
