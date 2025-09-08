@@ -2,6 +2,7 @@ package com.project.gym.service;
 
 import com.project.gym.config.CustomMetrics;
 import com.project.gym.dto.PasswordRequestDTO;
+import com.project.gym.dto.PhoneNumberRequestDTO;
 import com.project.gym.dto.UserResponseDTO;
 import com.project.gym.entity.UserEntity;
 import com.project.gym.exception.InvalidPasswordException;
@@ -42,6 +43,17 @@ public class UserService
         userRepository.delete(user);
         customMetrics.decrementUsers();
         log.info("Deleted own account with dni={}", user.getDni());
+    }
+
+    public String addPhoneNumber(PhoneNumberRequestDTO requestDTO)
+    {
+        UserEntity user = findCurrentUserOrThrow();
+
+        // The "54" is the country code for Argentina.
+        user.setPhoneNumber("54" + requestDTO.phoneNumber());
+        userRepository.save(user);
+
+        return "The phone number " + requestDTO.phoneNumber() + " has been successfully added to your account!";
     }
 
     private UserEntity findCurrentUserOrThrow()

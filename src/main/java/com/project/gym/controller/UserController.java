@@ -1,9 +1,6 @@
 package com.project.gym.controller;
 
-import com.project.gym.dto.MembershipRequestDTO;
-import com.project.gym.dto.MembershipResponseDTO;
-import com.project.gym.dto.PasswordRequestDTO;
-import com.project.gym.dto.UserResponseDTO;
+import com.project.gym.dto.*;
 import com.project.gym.service.MembershipService;
 import com.project.gym.service.UserService;
 import jakarta.validation.Valid;
@@ -29,6 +26,12 @@ public class UserController
     public ResponseEntity<UserResponseDTO> getMe()
     {
         return ResponseEntity.ok(userService.getMe());
+    }
+
+    @PatchMapping("/phone-number")
+    public ResponseEntity<String> addPhoneNumber(@Valid @RequestBody PhoneNumberRequestDTO requestDTO)
+    {
+        return ResponseEntity.ok(userService.addPhoneNumber(requestDTO));
     }
 
     @DeleteMapping
