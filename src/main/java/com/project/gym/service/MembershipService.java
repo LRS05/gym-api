@@ -17,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -124,7 +125,9 @@ public class MembershipService
         log.info("Deleted {} memberships with user_dni={}",memberships.size(), dni);
     }
 
-    @Scheduled(cron = "0 0 12 * * ?")
+    // Activates when the API starts and every 2 hours.
+    @Scheduled(fixedRate = 2 * 60 * 60 * 1000, initialDelay = 0)
+    @Transactional
     public void deactivateMemberships()
     {
         List<MembershipEntity> memberships = membershipRepository
@@ -136,14 +139,16 @@ public class MembershipService
         log.info("SERVER: Deactivated {} memberships today", memberships.size());
     }
 
-    @Scheduled(cron = "0 0 9 * * ?")
+    // Activates when the API starts and every 2 hours.
+    // If the membership expires tomorrow, and the owner has a phone number, a WhatsApp message is sent.
+    @Scheduled(fixedRate = 2 * 60 * 60 * 1000, initialDelay = 0)
+    @Transactional
     public void sendExpiryReminder()
     {
         LocalDate tomorrow = LocalDate.now().plusDays(1);
         List<MembershipEntity> memberships = membershipRepository
                 .findAllByStatusAndNextPaymentDate(MembershipStatus.ACTIVE, tomorrow);
 
-        // If the membership owner has an account and a phone number, a WhatsApp message is sent.
         memberships.forEach(this::sendExpiryReminderMessage);
     }
 
