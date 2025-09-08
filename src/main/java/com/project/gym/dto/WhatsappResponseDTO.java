@@ -9,8 +9,8 @@ public record WhatsappResponseDTO(
         @JsonProperty("messaging_product")
         String messagingProduct,
 
-        List<WhatsappContactResponseDTO> contacts,
+        List<WhatsAppContactResponseDTO> contacts,
 
-        List<WhatsappMessageResponseDTO> messages
+        List<WhatsAppMessageResponseDTO> messages
 ) {
 }

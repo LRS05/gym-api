@@ -48,7 +48,7 @@ public class MembershipServiceTest
     private CustomMetrics customMetrics;
 
     @Mock
-    private WhatsappService whatsappService;
+    private WhatsAppService whatsAppService;
 
     @InjectMocks
     private MembershipService membershipService;
@@ -77,13 +77,13 @@ public class MembershipServiceTest
         // Then
         verify(userRepository).findByDni(dni);
         verify(membershipRepository).save(captor.capture());
-        verify(whatsappService).sendMembershipCreatedMessage(any(MembershipEntity.class), any(UserEntity.class));
+        verify(whatsAppService).sendMembershipCreatedMessage(any(MembershipEntity.class), any(UserEntity.class));
         verify(membershipMapper).entityToDTO(expectedMembership);
 
         assertEquals(expectedUser, captor.getValue().getUser());
         assertEquals(expectedMembershipDTO, result);
         assertNotNull(expectedMembership.getUser().getPhoneNumber());
-        assertDoesNotThrow(() -> whatsappService.sendMembershipCreatedMessage(any(MembershipEntity.class), any(UserEntity.class)));
+        assertDoesNotThrow(() -> whatsAppService.sendMembershipCreatedMessage(any(MembershipEntity.class), any(UserEntity.class)));
     }
 
     @Test
@@ -114,7 +114,7 @@ public class MembershipServiceTest
         verify(userRepository).findByDni(dni);
         verify(membershipRepository).save(captor.capture());
         verify(membershipMapper).entityToDTO(expectedMembership);
-        verifyNoInteractions(whatsappService);
+        verifyNoInteractions(whatsAppService);
 
         assertEquals(result.userDni(), captor.getValue().getUserDni());
         assertEquals(expectedMembershipDTO, result);
@@ -139,7 +139,7 @@ public class MembershipServiceTest
         // Then
         verify(userRepository).findByDni(dni);
         verifyNoInteractions(membershipRepository);
-        verifyNoInteractions(whatsappService);
+        verifyNoInteractions(whatsAppService);
 
         assertNotEquals(Role.USER, expectedUser.getRole());
     }
@@ -168,7 +168,7 @@ public class MembershipServiceTest
         verify(userRepository).findByDni(dni);
         verify(membershipRepository).save(captor.capture());
         verify(membershipMapper).entityToDTO(expectedMembersip);
-        verifyNoInteractions(whatsappService);
+        verifyNoInteractions(whatsAppService);
 
         assertNull(captor.getValue().getUser());
         assertEquals(expectedMembershipDTO, result);
@@ -390,7 +390,7 @@ public class MembershipServiceTest
 
         // Then
         verify(membershipRepository).findAllByStatusAndNextPaymentDateBefore(MembershipStatus.ACTIVE, actualDate);
-        verify(whatsappService).sendMembershipExpiredMessage(any(MembershipEntity.class), any(UserEntity.class));
+        verify(whatsAppService).sendMembershipExpiredMessage(any(MembershipEntity.class), any(UserEntity.class));
         verify(membershipRepository).saveAll(captor.capture());
 
         assertTrue(captor.getValue().stream().allMatch(m ->
@@ -411,7 +411,7 @@ public class MembershipServiceTest
 
         // THen
         verify(membershipRepository).findAllByStatusAndNextPaymentDateBefore(MembershipStatus.ACTIVE, actualDate);
-        verifyNoInteractions(whatsappService);
+        verifyNoInteractions(whatsAppService);
         verify(membershipRepository).saveAll(new ArrayList<>());
     }
 
@@ -587,9 +587,9 @@ public class MembershipServiceTest
         // Then
         assertEquals(membership.getNextPaymentDate(), LocalDate.now().plusDays(1));
         assertNotNull(membership.getUser().getPhoneNumber());
-        assertDoesNotThrow(() -> whatsappService.sendMembershipExpiryReminderMessage(any(MembershipEntity.class), any(UserEntity.class)));
+        assertDoesNotThrow(() -> whatsAppService.sendMembershipExpiryReminderMessage(any(MembershipEntity.class), any(UserEntity.class)));
 
         verify(membershipRepository).findAllByStatusAndNextPaymentDate(MembershipStatus.ACTIVE, LocalDate.now().plusDays(1));
-        verify(whatsappService).sendMembershipExpiryReminderMessage(any(MembershipEntity.class), any(UserEntity.class));
+        verify(whatsAppService).sendMembershipExpiryReminderMessage(any(MembershipEntity.class), any(UserEntity.class));
     }
 }

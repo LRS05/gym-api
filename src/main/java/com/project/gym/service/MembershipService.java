@@ -27,7 +27,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class MembershipService
 {
-    private final WhatsappService whatsappService;
+    private final WhatsAppService whatsAppService;
     private final MembershipRepository membershipRepository;
     private final UserRepository userRepository;
     private final MembershipMapper membershipMapper;
@@ -211,7 +211,7 @@ public class MembershipService
         membership.setStatus(MembershipStatus.INACTIVE);
         if (membership.getUser() != null && membership.getUser().getPhoneNumber() != null)
         {
-            whatsappService.sendMembershipExpiredMessage(membership, membership.getUser());
+            whatsAppService.sendMembershipExpiredMessage(membership, membership.getUser());
         }
         customMetrics.decrementActiveMemberships();
     }
@@ -220,7 +220,7 @@ public class MembershipService
     {
         if (membership.getUser() != null && membership.getUser().getPhoneNumber() != null)
         {
-            whatsappService.sendMembershipExpiryReminderMessage(membership, membership.getUser());
+            whatsAppService.sendMembershipExpiryReminderMessage(membership, membership.getUser());
         }
     }
 
@@ -228,7 +228,7 @@ public class MembershipService
     {
         if (membership.getUser() != null && membership.getUser().getPhoneNumber() != null)
         {
-            whatsappService.sendMembershipCreatedMessage(membership, membership.getUser());
+            whatsAppService.sendMembershipCreatedMessage(membership, membership.getUser());
         }
     }
 }

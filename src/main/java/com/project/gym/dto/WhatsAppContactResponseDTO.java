@@ -2,7 +2,7 @@ package com.project.gym.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public record WhatsappContactResponseDTO(
+public record WhatsAppContactResponseDTO(
 
         String input,
 

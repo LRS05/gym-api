@@ -1,6 +1,6 @@
 package com.project.gym.dto;
 
-public record WhatsappMessageBodyDTO(
+public record WhatsAppMessageBodyDTO(
 
         String number,
 
