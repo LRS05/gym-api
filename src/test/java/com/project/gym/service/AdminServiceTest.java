@@ -135,9 +135,9 @@ public class AdminServiceTest
         // Then
         verify(userRepository).findByDni(dni);
         verify(userRepository).save(captor.capture());
-        verify(userMapper).entityToDTO(captor.capture());
+        verify(userMapper).entityToDTO(expectedUserUpdated);
 
-        assertEquals(expectedUserUpdated, captor.getValue());
+        assertEquals(requestDTO.role(), captor.getValue().getRole());
         assertEquals(expectedUserUpdatedDTO, result);
     }
 
@@ -266,16 +266,16 @@ public class AdminServiceTest
     void deleteUserById_WhenUserIsAdmin_ThenThrowException()
     {
         // Given
-        String dni = "46622977";
+        int id = 1;
         UserEntity expectedUser = UserTestDataFactory.userAdmin();
 
         // When
-        when(userRepository.findByDni(dni)).thenReturn(Optional.of(expectedUser));
+        when(userRepository.findById(id)).thenReturn(Optional.of(expectedUser));
 
         // Then
-        assertThrows(InvalidDeleteException.class, () -> adminService.deleteUserByDni(dni));
+        assertThrows(InvalidDeleteException.class, () -> adminService.deleteUserById(id));
 
-        verify(userRepository).findByDni(dni);
+        verify(userRepository).findById(id);
         verifyNoMoreInteractions(userRepository);
     }
 }

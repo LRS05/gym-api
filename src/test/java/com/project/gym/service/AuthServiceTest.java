@@ -60,12 +60,12 @@ public class AuthServiceTest
     private AuthService authService;
 
     @Test
-    void register_WheUserNotRegistered_ThenCreateUserAndReturnTokens()
+    void register_WhenUserNotRegistered_ThenCreateUserAndReturnTokens()
     {
         // Given
         RegisterRequestDTO requestDTO = new RegisterRequestDTO(
                 "87654321",
-                "gordomono",
+                "Gordomono8!",
                 Gender.MALE,
                 "Franco",
                 "Cataldi"
@@ -106,7 +106,7 @@ public class AuthServiceTest
         // Given
         RegisterRequestDTO requestDTO = new RegisterRequestDTO(
                 "87654321",
-                "gordomono",
+                "Gordomono8!",
                 Gender.MALE,
                 "Ulises",
                 "Quiroz"
@@ -316,7 +316,7 @@ public class AuthServiceTest
     }
 
     @Test
-    void logout_WhenUserHasValidTokens_ThenEmptyTokenCookies()
+    void logout_WhenUserHasValidTokenCookies_ThenEmptyTokenCookies()
     {
         // Given
         ResponseCookie expectedAccessTokenEmptyCookie = ResponseCookie.from(TokenType.ACCESS_TOKEN.name(), "")

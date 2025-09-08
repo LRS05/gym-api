@@ -6,12 +6,10 @@ import com.project.gym.entity.enums.TokenType;
 import com.project.gym.exception.CookieNotFoundException;
 import com.project.gym.exception.InvalidTokenException;
 import jakarta.servlet.http.Cookie;
-import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
-import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseCookie;
 
@@ -179,7 +177,7 @@ public class JwtServiceTest
     }
 
     @Test
-    void extractSubject_WhenAccessTokenIsValid_ThenReturnExpectedDni()
+    void extractSubject_WhenTokenIsValid_ThenReturnExpectedDni()
     {
         // Given
         UserEntity expectedUser = UserTestDataFactory.userStaff();
