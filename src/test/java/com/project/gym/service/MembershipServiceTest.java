@@ -477,9 +477,11 @@ public class MembershipServiceTest
         int id = 1;
         MembershipStatusRequestDTO requestDTO = new MembershipStatusRequestDTO(MembershipStatus.ACTIVE);
         MembershipEntity expectedMembership = MembershipTestDataFactory.userRegisteredMembership();
+        MembershipResponseDTO expectedMembershipDTO = MembershipTestDataFactory.userRegisteredMembershipDTO();
 
         // When
         when(membershipRepository.findById(id)).thenReturn(Optional.of(expectedMembership));
+        when(membershipMapper.entityToDTO(expectedMembership)).thenReturn(expectedMembershipDTO);
 
         MembershipResponseDTO result = membershipService.updateMembershipStatusById(id, requestDTO);
 
