@@ -21,4 +21,6 @@ public interface MembershipRepository extends JpaRepository<MembershipEntity, In
     Optional<MembershipEntity> findFirstByUserDniOrderByPaymentDateDesc(String dni);
 
     List<MembershipEntity> findAllByStatusAndNextPaymentDateBefore(MembershipStatus status, LocalDate date);
+
+    List<MembershipEntity> findAllByStatusAndNextPaymentDate(MembershipStatus status, LocalDate date);
 }
