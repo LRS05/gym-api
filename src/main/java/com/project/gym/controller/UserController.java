@@ -37,7 +37,7 @@ public class UserController
     @DeleteMapping
     public ResponseEntity<String> deleteMe(@Valid @RequestBody PasswordRequestDTO requestDTO)
     {
-        log.info("Attempting to delete own account");
+        log.debug("Attempting to delete own account");
         userService.deleteMe(requestDTO);
         return ResponseEntity.ok("Account deleted successfully.");
     }
@@ -54,7 +54,7 @@ public class UserController
     @PostMapping("/membership")
     public ResponseEntity<MembershipResponseDTO> createMembership(Principal principal, @Valid @RequestBody MembershipRequestDTO requestDTO)
     {
-        log.info("Attempting to create own membership with dni={}, type={}, payment method={}", principal.getName(), requestDTO.type(), requestDTO.paymentMethod());
+        log.debug("Attempting to create own membership with dni={}, type={}, payment method={}", principal.getName(), requestDTO.type(), requestDTO.paymentMethod());
         return ResponseEntity.status(HttpStatus.CREATED).body(membershipService.createMembershipByDni(principal.getName(), requestDTO));
     }
 

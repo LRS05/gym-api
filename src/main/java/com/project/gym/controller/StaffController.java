@@ -41,14 +41,14 @@ public class StaffController
     @GetMapping("/user/dni/{dni}")
     public ResponseEntity<UserResponseDTO> getUserByDni(@PathVariable String dni)
     {
-        log.info("Attempting to read user with dni={}", dni);
+        log.debug("Attempting to read user with dni={}", dni);
         return ResponseEntity.ok(staffService.getUserByDni(dni));
     }
 
     @GetMapping("/user/{id}")
     public ResponseEntity<UserResponseDTO> getUserById(@PathVariable int id)
     {
-        log.info("Attempting to read user with id={}", id);
+        log.debug("Attempting to read user with id={}", id);
         return ResponseEntity.ok(staffService.getUserById(id));
     }
 
