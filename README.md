@@ -68,7 +68,7 @@ Docker and Docker Compose installed on your machine.
 ### Instructions
 1. Clone the repository
 ```sh
-git clone <your-repo-url>
+git clone https://github.com/github_username/gym-api.git
 cd gym-management-api
 ```
 
