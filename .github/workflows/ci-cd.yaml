@@ -20,7 +20,7 @@ jobs:
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-      - run: mvn clean install -DskipTests
+      - run: mvn clean install -DskipTests -U
       - run: mvn test
 
   cd:
