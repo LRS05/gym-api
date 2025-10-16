@@ -55,11 +55,7 @@ public class AuthService
         UserEntity savedUser = userRepository.save(user);
         log.info("Successfully registered a new account with dni={}", requestDTO.dni());
         customMetrics.incrementUsers();
-
-        return jwtService.generateTokenCookies(
-                jwtService.generateAccessToken(savedUser),
-                jwtService.generateRefreshToken(savedUser)
-        );
+        return generateTokenCookies(savedUser);
     }
 
     public Map<String, ResponseCookie> authenticate(AuthRequestDTO requestDTO)
@@ -70,36 +66,37 @@ public class AuthService
         );
 
         UserEntity user = findUserByDniOrThrow(requestDTO.dni());
-        log.info("Successfully authenticated with dni={}", requestDTO.dni());
 
-        return jwtService.generateTokenCookies(
-                jwtService.generateAccessToken(user),
-                jwtService.generateRefreshToken(user)
-        );
+        log.info("Successfully authenticated with dni={}", requestDTO.dni());
+        return generateTokenCookies(user);
     }
 
     public ResponseCookie refresh(HttpServletRequest request)
     {
         // Throws exception if cookies == null or token cookie not found.
-        String refreshToken = jwtService.extractCookiesToken(request.getCookies(), TokenType.REFRESH_TOKEN);
+        String refreshToken = jwtService.getTokenFromCookies(request.getCookies(), TokenType.REFRESH);
 
-        UserEntity user = findUserByDniOrThrow(jwtService.extractSubject(refreshToken));
-        if (!jwtService.isTokenValid(refreshToken, user))
+        UserEntity user = findUserByDniOrThrow(jwtService.getSubject(refreshToken));
+        if (!jwtService.isTokenValid(refreshToken, user) || !jwtService.getTokenType(refreshToken).equals("refresh"))
         {
             throw new InvalidTokenException("Invalid or expired refresh token.");
         }
-
         log.info("Successfully refreshed access token");
-        return jwtService.generateAccessTokenCookie(jwtService.generateAccessToken(user));
+        return jwtService.generateAccessTokenCookie(user);
     }
 
     public void logout(HttpServletResponse response)
     {
-        ResponseCookie refreshCookie = jwtService.emptyCookie(TokenType.REFRESH_TOKEN.name());
-        ResponseCookie accessCookie = jwtService.emptyCookie(TokenType.ACCESS_TOKEN.name());
+        response.addHeader(HttpHeaders.SET_COOKIE, jwtService.emptyCookie("access-token").toString());
+        response.addHeader(HttpHeaders.SET_COOKIE, jwtService.emptyCookie("refresh-token").toString());
+    }
 
-        response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
-        response.addHeader(HttpHeaders.SET_COOKIE, accessCookie.toString());
+    private Map<String, ResponseCookie> generateTokenCookies(UserEntity user)
+    {
+        return Map.of(
+                "access-token", jwtService.generateAccessTokenCookie(user),
+                "refresh-token", jwtService.generateRefreshTokenCookie(user)
+        );
     }
 
     private UserEntity findUserByDniOrThrow(String dni)

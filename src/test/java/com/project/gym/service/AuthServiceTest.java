@@ -9,7 +9,6 @@ import com.project.gym.entity.enums.TokenType;
 import com.project.gym.exception.*;
 import com.project.gym.repository.UserRepository;
 import com.project.gym.data.UserTestDataFactory;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.Test;
@@ -18,6 +17,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -63,41 +63,35 @@ public class AuthServiceTest
     void register_WhenUserNotRegistered_ThenCreateUserAndReturnTokens()
     {
         // Given
-        RegisterRequestDTO requestDTO = new RegisterRequestDTO(
+        RegisterRequestDTO requestDTO =  new RegisterRequestDTO(
                 "87654321",
-                "Gordomono8!",
+                "Holatodobien8!",
                 Gender.MALE,
                 "Franco",
                 "Cataldi"
         );
-        UserEntity expectedUser = UserTestDataFactory.userUser();
-        ResponseCookie expectedAccessTokenCookie = ResponseCookie.from("ACCESS_TOKEN", "access-token").httpOnly(true).build();
-        ResponseCookie expectedRefreshTokenCookie = ResponseCookie.from("REFRESH_TOKEN", "refresh-token").httpOnly(true).build();
-
-        Map<String, ResponseCookie> expectedCookies = Map.of(
-                "access_token", expectedAccessTokenCookie,
-                "refresh_token", expectedRefreshTokenCookie
-        );
+        UserEntity expectedUser =  UserTestDataFactory.userUser();
+        ResponseCookie expectedAccessTokenCookie = ResponseCookie.from("access-token", "access-token-value").build();
+        ResponseCookie expectedRefreshTokenCookie = ResponseCookie.from("refresh-token", "refresh-token-value").build();
 
         // When
         when(userRepository.existsByDni(requestDTO.dni())).thenReturn(false);
         when(userRepository.save(any(UserEntity.class))).thenReturn(expectedUser);
-        when(jwtService.generateAccessToken(expectedUser)).thenReturn("access-token");
-        when(jwtService.generateRefreshToken(expectedUser)).thenReturn("refresh-token");
-        when(jwtService.generateTokenCookies("access-token", "refresh-token")).thenReturn(expectedCookies);
+        when(jwtService.generateAccessTokenCookie(any(UserEntity.class))).thenReturn(expectedAccessTokenCookie);
+        when(jwtService.generateRefreshTokenCookie(any(UserEntity.class))).thenReturn(expectedRefreshTokenCookie);
 
-        ArgumentCaptor<UserEntity> captor = ArgumentCaptor.forClass(UserEntity.class);
+        ArgumentCaptor<UserEntity> captor =  ArgumentCaptor.forClass(UserEntity.class);
         Map<String, ResponseCookie> result = authService.register(requestDTO);
 
         // Then
         verify(userRepository).existsByDni(requestDTO.dni());
         verify(userRepository).save(captor.capture());
-        verify(jwtService).generateAccessToken(expectedUser);
-        verify(jwtService).generateRefreshToken(expectedUser);
-        verify(jwtService).generateTokenCookies("access-token", "refresh-token");
+        verify(jwtService).generateAccessTokenCookie(captor.capture());
+        verify(jwtService).generateRefreshTokenCookie(captor.capture());
 
-        assertEquals(requestDTO.dni(), captor.getValue().getDni());
-        assertEquals(expectedCookies, result);
+        assertEquals(expectedAccessTokenCookie, result.get("access-token"));
+        assertEquals(expectedRefreshTokenCookie, result.get("refresh-token"));
+        assertEquals(expectedUser.getDni(), captor.getValue().getDni());
     }
 
     @Test
@@ -128,26 +122,19 @@ public class AuthServiceTest
     {
         // Given
         AuthRequestDTO requestDTO = new AuthRequestDTO(
-                "46622977",
-                "gordomono"
+                "87654321",
+                "Gordomono8!"
         );
-        UserEntity expectedUser = UserTestDataFactory.userAdmin();
-        ResponseCookie expectedAccessTokenCookie = ResponseCookie.from("ACCESS_TOKEN", "access-token").httpOnly(true).build();
-        ResponseCookie expectedRefreshTokenCookie = ResponseCookie.from("REFRESH_TOKEN", "refresh-token").httpOnly(true).build();
-
-        Map<String, ResponseCookie> expectedCookies = Map.of(
-                "access_token", expectedAccessTokenCookie,
-                "refresh_token", expectedRefreshTokenCookie
-        );
+        UserEntity expectedUser = UserTestDataFactory.userUser();
+        ResponseCookie expectedAccessTokenCookie = ResponseCookie.from("access-token", "access-token-value").build();
+        ResponseCookie expectedRefreshTokenCookie = ResponseCookie.from("access-token", "access-token-value").build();
 
         // When
-        when(authenticationManager.authenticate(any(Authentication.class))).thenReturn(
-                new UsernamePasswordAuthenticationToken(requestDTO.dni(), requestDTO.password())
-        );
+        when(authenticationManager.authenticate(any(Authentication.class)))
+                .thenReturn(new UsernamePasswordAuthenticationToken(requestDTO.dni(), requestDTO.password()));
         when(userRepository.findByDni(requestDTO.dni())).thenReturn(Optional.of(expectedUser));
-        when(jwtService.generateAccessToken(expectedUser)).thenReturn("access-token");
-        when(jwtService.generateRefreshToken(expectedUser)).thenReturn("refresh-token");
-        when(jwtService.generateTokenCookies("access-token", "refresh-token")).thenReturn(expectedCookies);
+        when(jwtService.generateAccessTokenCookie(expectedUser)).thenReturn(expectedAccessTokenCookie);
+        when(jwtService.generateRefreshTokenCookie(expectedUser)).thenReturn(expectedRefreshTokenCookie);
 
         ArgumentCaptor<Authentication> captor = ArgumentCaptor.forClass(Authentication.class);
         Map<String, ResponseCookie> result = authService.authenticate(requestDTO);
@@ -155,12 +142,12 @@ public class AuthServiceTest
         // Then
         verify(authenticationManager).authenticate(captor.capture());
         verify(userRepository).findByDni(requestDTO.dni());
-        verify(jwtService).generateAccessToken(expectedUser);
-        verify(jwtService).generateRefreshToken(expectedUser);
-        verify(jwtService).generateTokenCookies("access-token", "refresh-token");
+        verify(jwtService).generateAccessTokenCookie(expectedUser);
+        verify(jwtService).generateRefreshTokenCookie(expectedUser);
 
         assertEquals(requestDTO.dni(), captor.getValue().getName());
-        assertEquals(expectedCookies, result);
+        assertEquals(expectedAccessTokenCookie, result.get("access-token"));
+        assertEquals(expectedRefreshTokenCookie, result.get("refresh-token"));
     }
 
     @Test
@@ -208,31 +195,30 @@ public class AuthServiceTest
     {
         // Given
         String dni = "87654321";
-        UserEntity expectedUser = UserTestDataFactory.userUser();
-        String expectedRefreshToken = "refresh-token";
-        String newAccessToken = "new-access-token";
-        ResponseCookie newAccessTokenCookie = ResponseCookie.from("ACCESS_TOKEN", "new-access-token").httpOnly(true).build();
+        UserEntity user = UserTestDataFactory.userUser();
+        String refreshToken = "refresh-token";
+        ResponseCookie expectedAccessTokenCookie = ResponseCookie.from("access-token", "access-token-value").build();
 
         // When
-        when(jwtService.extractCookiesToken(httpServletRequest.getCookies(), TokenType.REFRESH_TOKEN)).thenReturn(expectedRefreshToken);
-        when(jwtService.extractSubject(expectedRefreshToken)).thenReturn(dni);
-        when(userRepository.findByDni(dni)).thenReturn(Optional.of(expectedUser));
-        when(jwtService.isTokenValid(expectedRefreshToken, expectedUser)).thenReturn(true);
-        when(jwtService.generateAccessToken(expectedUser)).thenReturn(newAccessToken);
-        when(jwtService.generateAccessTokenCookie(newAccessToken)).thenReturn(newAccessTokenCookie);
+        when(jwtService.getTokenFromCookies(httpServletRequest.getCookies(), TokenType.REFRESH)).thenReturn(refreshToken);
+        when(jwtService.getSubject(refreshToken)).thenReturn(dni);
+        when(userRepository.findByDni(dni)).thenReturn(Optional.of(user));
+        when(jwtService.isTokenValid(refreshToken, user)).thenReturn(true);
+        when(jwtService.getTokenType(refreshToken)).thenReturn("refresh");
+        when(jwtService.generateAccessTokenCookie(user)).thenReturn(expectedAccessTokenCookie);
 
         ResponseCookie result = authService.refresh(httpServletRequest);
 
         // Then
-        verify(jwtService).extractCookiesToken(httpServletRequest.getCookies(), TokenType.REFRESH_TOKEN);
-        verify(jwtService).extractSubject(expectedRefreshToken);
+        verify(jwtService).getTokenFromCookies(httpServletRequest.getCookies(), TokenType.REFRESH);
+        verify(jwtService).getSubject(refreshToken);
         verify(userRepository).findByDni(dni);
-        verify(jwtService).isTokenValid(expectedRefreshToken, expectedUser);
-        verify(jwtService).generateAccessToken(expectedUser);
-        verify(jwtService).generateAccessTokenCookie(newAccessToken);
+        verify(jwtService).isTokenValid(refreshToken, user);
+        verify(jwtService).getTokenType(refreshToken);
+        verify(jwtService).generateAccessTokenCookie(user);
 
-        assertEquals(newAccessTokenCookie, result);
-        assertEquals(newAccessToken, result.getValue());
+        assertEquals(expectedAccessTokenCookie, result);
+        assertEquals(expectedAccessTokenCookie.getValue(), result.getValue());
     }
 
 
@@ -240,52 +226,46 @@ public class AuthServiceTest
     void refresh_WhenCookiesAreNull_ThenThrowException()
     {
         // When
-        when(httpServletRequest.getCookies()).thenReturn(null);
-        when(jwtService.extractCookiesToken(null, TokenType.REFRESH_TOKEN)).thenThrow(CookieNotFoundException.class);
+        when(jwtService.getTokenFromCookies(null, TokenType.REFRESH))
+                .thenThrow(CookieNotFoundException.class);
 
         // Then
         assertThrows(CookieNotFoundException.class, () -> authService.refresh(httpServletRequest));
 
-        verify(httpServletRequest).getCookies();
-        verify(jwtService).extractCookiesToken(null, TokenType.REFRESH_TOKEN);
+        verify(jwtService).getTokenFromCookies(null, TokenType.REFRESH);
     }
 
     @Test
     void refresh_WhenRefreshTokenCookieNotFound_ThenThrowException()
     {
-        // Given
-        Cookie[] cookies = {new Cookie("EXPECTED-ACCESS-TOKEN", "expected-access-token")};
-
         // When
-        when(httpServletRequest.getCookies()).thenReturn(cookies);
-        when(jwtService.extractCookiesToken(cookies, TokenType.REFRESH_TOKEN)).thenThrow(CookieNotFoundException.class);
+        when(jwtService.getTokenFromCookies(httpServletRequest.getCookies(), TokenType.REFRESH))
+                .thenThrow(CookieNotFoundException.class);
 
         // Then
         assertThrows(CookieNotFoundException.class, () -> authService.refresh(httpServletRequest));
 
-        verify(httpServletRequest).getCookies();
+        verify(jwtService).getTokenFromCookies(httpServletRequest.getCookies(), TokenType.REFRESH);
     }
 
     @Test
     void refresh_WhenUserDoesNotExist_ThenThrowException()
     {
         // Given
+        String refreshToken = "refresh-token";
         String dni = "99999999";
-        String expectedRefreshToken = "expected-refresh-token";
-        Cookie[] cookies = {new Cookie("EXPECTED-REFRESH-TOKEN", expectedRefreshToken)};
 
         // When
-        when(httpServletRequest.getCookies()).thenReturn(cookies);
-        when(jwtService.extractCookiesToken(cookies, TokenType.REFRESH_TOKEN)).thenReturn(expectedRefreshToken);
-        when(jwtService.extractSubject(expectedRefreshToken)).thenReturn(dni);
+        when(jwtService.getTokenFromCookies(httpServletRequest.getCookies(), TokenType.REFRESH))
+                .thenReturn(refreshToken);
+        when(jwtService.getSubject(refreshToken)).thenReturn(dni);
         when(userRepository.findByDni(dni)).thenReturn(Optional.empty());
 
         // Then
         assertThrows(UsernameNotFoundException.class, () -> authService.refresh(httpServletRequest));
 
-        verify(httpServletRequest).getCookies();
-        verify(jwtService).extractCookiesToken(cookies, TokenType.REFRESH_TOKEN);
-        verify(jwtService).extractSubject(expectedRefreshToken);
+        verify(jwtService).getTokenFromCookies(httpServletRequest.getCookies(), TokenType.REFRESH);
+        verify(jwtService).getSubject(refreshToken);
         verify(userRepository).findByDni(dni);
     }
 
@@ -294,56 +274,42 @@ public class AuthServiceTest
     {
         // Given
         String dni = "87654321";
-        UserEntity expectedUser = UserTestDataFactory.userUser();
-        String expectedRefreshToken = "expected-refresh-token";
-        Cookie[] cookies = {new Cookie("EXPECTED-REFRESH-TOKEN", expectedRefreshToken)};
+        UserEntity user = UserTestDataFactory.userAdmin();
+        String refreshToken = "refresh-token";
 
         // When
-        when(httpServletRequest.getCookies()).thenReturn(cookies);
-        when(jwtService.extractCookiesToken(cookies, TokenType.REFRESH_TOKEN)).thenReturn(expectedRefreshToken);
-        when(jwtService.extractSubject(expectedRefreshToken)).thenReturn(dni);
-        when(userRepository.findByDni(dni)).thenReturn(Optional.of(expectedUser));
-        when(jwtService.isTokenValid(expectedRefreshToken, expectedUser)).thenReturn(false);
+        when(jwtService.getTokenFromCookies(httpServletRequest.getCookies(), TokenType.REFRESH)).thenReturn(refreshToken);
+        when(jwtService.getSubject(refreshToken)).thenReturn(dni);
+        when(userRepository.findByDni(dni)).thenReturn(Optional.of(user));
+        when(jwtService.isTokenValid(refreshToken, user)).thenReturn(false);
 
         // Then
         assertThrows(InvalidTokenException.class, () -> authService.refresh(httpServletRequest));
 
-        verify(httpServletRequest).getCookies();
-        verify(jwtService).extractCookiesToken(cookies, TokenType.REFRESH_TOKEN);
-        verify(jwtService).extractSubject(expectedRefreshToken);
+        verify(jwtService).getTokenFromCookies(httpServletRequest.getCookies(), TokenType.REFRESH);
+        verify(jwtService).getSubject(refreshToken);
         verify(userRepository).findByDni(dni);
-        verify(jwtService).isTokenValid(expectedRefreshToken, expectedUser);
+        verify(jwtService).isTokenValid(refreshToken, user);
     }
 
     @Test
     void logout_WhenUserHasValidTokenCookies_ThenEmptyTokenCookies()
     {
         // Given
-        ResponseCookie expectedAccessTokenEmptyCookie = ResponseCookie.from(TokenType.ACCESS_TOKEN.name(), "")
-                .httpOnly(true)
-                .secure(true)
-                .sameSite("Strict")
-                .path("/")
-                .maxAge(0)
-                .build();
-
-        ResponseCookie expectedRefreshTokenEmptyCookie = ResponseCookie.from(TokenType.ACCESS_TOKEN.name(), "")
-                .httpOnly(true)
-                .secure(true)
-                .sameSite("Strict")
-                .path("/")
-                .maxAge(0)
-                .build();
+        ResponseCookie expectedEmptyAccessTokenCookie = ResponseCookie.from("access-token", "").build();
+        ResponseCookie expectedEmptyRefreshTokenCookie = ResponseCookie.from("refresh-token", "").build();
 
         // When
-        when(jwtService.emptyCookie(TokenType.REFRESH_TOKEN.name())).thenReturn(expectedRefreshTokenEmptyCookie);
-        when(jwtService.emptyCookie(TokenType.ACCESS_TOKEN.name())).thenReturn(expectedAccessTokenEmptyCookie);
+        when(jwtService.emptyCookie("access-token")).thenReturn(expectedEmptyAccessTokenCookie);
+        when(jwtService.emptyCookie("refresh-token")).thenReturn(expectedEmptyRefreshTokenCookie);
 
         authService.logout(httpServletResponse);
 
         // Then
-        verify(jwtService).emptyCookie(TokenType.REFRESH_TOKEN.name());
-        verify(jwtService).emptyCookie(TokenType.ACCESS_TOKEN.name());
-    }
+        verify(jwtService).emptyCookie("access-token");
+        verify(jwtService).emptyCookie("refresh-token");
 
+        verify(httpServletResponse).addHeader(HttpHeaders.SET_COOKIE, expectedEmptyAccessTokenCookie.toString());
+        verify(httpServletResponse).addHeader(HttpHeaders.SET_COOKIE, expectedEmptyRefreshTokenCookie.toString());
+    }
 }
