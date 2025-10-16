@@ -122,20 +122,6 @@ public class GlobalExceptionHandler
         return new ResponseEntity<>(e.getMessage(), HttpStatus.UNAUTHORIZED);
     }
 
-    @ExceptionHandler(InvalidAuthorizationHeaderException.class)
-    public ResponseEntity<Object> handleInvalidAuthorizationHeaderException(InvalidAuthorizationHeaderException e)
-    {
-        log.info("Invalid Authorization header: expected a JWT token");
-        return new ResponseEntity<>(e.getMessage(), HttpStatus.UNAUTHORIZED);
-    }
-
-    @ExceptionHandler(MissingTokenException.class)
-    public ResponseEntity<Object> handleMissingTokenException(MissingTokenException e)
-    {
-        log.warn("Invalid authentication header: expected a JWT token");
-        return new ResponseEntity<>(e.getMessage(), HttpStatus.UNAUTHORIZED);
-    }
-
     @ExceptionHandler(InvalidTokenException.class)
     public ResponseEntity<Object> handleInvalidTokenException(InvalidTokenException e)
     {
@@ -149,12 +135,4 @@ public class GlobalExceptionHandler
         log.warn("Attempted to use a expired token");
         return new ResponseEntity<>(e.getMessage(), HttpStatus.UNAUTHORIZED);
     }
-
-    @ExceptionHandler(InvalidTokenTypeException.class)
-    public ResponseEntity<Object> handleInvalidTokenTypeException(InvalidTokenTypeException e)
-    {
-        log.warn("Attempted to use access token to refresh");
-        return new ResponseEntity<>(e.getMessage(), HttpStatus.UNAUTHORIZED);
-    }
-
 }
