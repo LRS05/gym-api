@@ -30,42 +30,42 @@ public class AuthController
     @PostMapping("/register")
     public ResponseEntity<String> register(@Valid @RequestBody RegisterRequestDTO requestDTO)
     {
-        log.info("Attempting to register a new account with dni={}", requestDTO.dni());
+        log.debug("Attempting to register a new account with dni={}", requestDTO.dni());
 
         Map<String, ResponseCookie> cookies = authService.register(requestDTO);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .header(HttpHeaders.SET_COOKIE, cookies.get("access_token").toString())
-                .header(HttpHeaders.SET_COOKIE, cookies.get("refresh_token").toString())
+                .header(HttpHeaders.SET_COOKIE, cookies.get("access-token").toString())
+                .header(HttpHeaders.SET_COOKIE, cookies.get("refresh-token").toString())
                 .body("Register successful");
     }
 
     @PostMapping("/login")
     public ResponseEntity<String> authenticate(@Valid @RequestBody AuthRequestDTO requestDTO)
     {
-        log.info("Attempting to authenticate with dni={}", requestDTO.dni());
+        log.debug("Attempting to authenticate with dni={}", requestDTO.dni());
 
         Map<String, ResponseCookie> cookies = authService.authenticate(requestDTO);
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, cookies.get("access_token").toString())
-                .header(HttpHeaders.SET_COOKIE, cookies.get("refresh_token").toString())
+                .header(HttpHeaders.SET_COOKIE, cookies.get("access-token").toString())
+                .header(HttpHeaders.SET_COOKIE, cookies.get("refresh-token").toString())
                 .body("Login successful");
     }
 
     @PostMapping("/refresh")
     public ResponseEntity<Void> refresh(HttpServletRequest request)
     {
-        log.info("Attempting to refresh access token");
+        log.debug("Attempting to refresh access token");
 
-        ResponseCookie cookie = authService.refresh(request);
+        ResponseCookie newAccessTokenCookie = authService.refresh(request);
         return ResponseEntity.noContent()
-                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .header(HttpHeaders.SET_COOKIE, newAccessTokenCookie.toString())
                 .build();
     }
 
     @PostMapping("/logout")
     public ResponseEntity<String> logout(HttpServletResponse response)
     {
-        log.info("Attempting to logout");
+        log.debug("Attempting to logout");
         authService.logout(response);
         return ResponseEntity.ok("Logout successful");
     }
