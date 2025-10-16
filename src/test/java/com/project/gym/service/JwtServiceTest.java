@@ -13,8 +13,6 @@ import org.mockito.InjectMocks;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseCookie;
 
-import java.util.Map;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -36,126 +34,94 @@ public class JwtServiceTest
     }
 
     @Test
-    void generateAccessToken_WhenUserIsValid_ThenReturnAccessToken()
+    void generateAccessTokenCookie_WhenUserIsValid_ThenReturnAccessTokenCookie()
     {
         // Given
         UserEntity expectedUser = UserTestDataFactory.userAdmin();
 
         // When
-        String result = jwtService.generateAccessToken(expectedUser);
-        String extractedDni = jwtService.extractSubject(result);
+        ResponseCookie result = jwtService.generateAccessTokenCookie(expectedUser);
 
         // Then
         assertNotNull(result);
-        assertEquals(expectedUser.getDni(), extractedDni);
     }
 
     @Test
-    void generateRefreshToken_WhenUserIsValid_ThenReturnRefreshToken()
+    void generateRefreshTokenCookie_WhenUserIsValid_ThenReturnRefreshTokenCookie()
     {
         // Given
         UserEntity expectedUser = UserTestDataFactory.userAdmin();
 
         // When
-        String result = jwtService.generateRefreshToken(expectedUser);
-        String extractedDni = jwtService.extractSubject(result);
+        ResponseCookie result = jwtService.generateRefreshTokenCookie(expectedUser);
 
         // Then
         assertNotNull(result);
-        assertEquals(expectedUser.getDni(), extractedDni);
     }
 
     @Test
-    void generateTokenCookies_WhenTokensAreValid_ThenReturnCookies()
+    void getTokenFromCookies_WhenTokenTypeIsValid_ThenReturnToken()
     {
         // Given
-        UserEntity expectedUser = UserTestDataFactory.userUser();
-        String accessToken = jwtService.generateAccessToken(expectedUser);
-        String refreshToken = jwtService.generateRefreshToken(expectedUser);
+        UserEntity user = UserTestDataFactory.userUser();
+        String expectedAccessToken = jwtService.generateAccessTokenCookie(user).getValue();
+
 
         // When
-        Map<String, ResponseCookie> result = jwtService.generateTokenCookies(accessToken, refreshToken);
+        Cookie[] cookies = {new Cookie("access-token", expectedAccessToken)};
+        String result = jwtService.getTokenFromCookies(cookies, TokenType.ACCESS);
 
         // Then
-        assertEquals(accessToken, result.get("access_token").getValue());
-        assertEquals(refreshToken, result.get("refresh_token").getValue());
+        assertEquals(expectedAccessToken, result);
     }
 
     @Test
-    void generateAccessTokenCookie_WhenTokenIsValid_ThenReturnCookie()
-    {
-        // Given
-        UserEntity expectedUser = UserTestDataFactory.userUser();
-        String accessToken = jwtService.generateAccessToken(expectedUser);
-
-        // When
-        ResponseCookie result = jwtService.generateAccessTokenCookie(accessToken);
-
-        // Then
-        assertEquals(accessToken, result.getValue());
-    }
-
-    @Test
-    void extractCookiesToken_WhenTokenTypeIsValid_ThenReturnToken()
-    {
-        // Given
-        UserEntity expectedUser = UserTestDataFactory.userUser();
-        String accessToken = jwtService.generateAccessToken(expectedUser);
-
-        Cookie[] cookies = {new Cookie("ACCESS_TOKEN", accessToken)};
-
-        // When
-        String result = jwtService.extractCookiesToken(cookies, TokenType.ACCESS_TOKEN);
-
-        // Then
-        assertEquals(accessToken, result);
-    }
-
-    @Test
-    void extractCookiesToken_WhenCookiesAreNull_ThenThrowException()
+    void getTokenFromCookies_WhenCookiesAreNull_ThenThrowException()
     {
         // When & Then
-        assertThrows(CookieNotFoundException.class, () -> jwtService.extractCookiesToken(null, TokenType.ACCESS_TOKEN));
+        assertThrows(CookieNotFoundException.class, () -> jwtService.getTokenFromCookies(null, TokenType.ACCESS));
     }
 
     @Test
-    void extractCookiesToken_WhenCookieNotFound_ThenThrowException()
+    void getTokenFromCookies_WhenCookieNotFound_ThenThrowException()
     {
         // Given
-        UserEntity expectedUser = UserTestDataFactory.userUser();
-        String accessToken = jwtService.generateAccessToken(expectedUser);
+        UserEntity user = UserTestDataFactory.userUser();
+        String accessToken = jwtService.generateAccessTokenCookie(user).getValue();
 
         Cookie[] cookies = {new Cookie("ACCESS_TOKEN", accessToken)};
 
         // When & Then
-        assertThrows(CookieNotFoundException.class, () -> jwtService.extractCookiesToken(cookies, TokenType.REFRESH_TOKEN));
+        assertThrows(CookieNotFoundException.class, () -> jwtService.getTokenFromCookies(cookies, TokenType.REFRESH));
     }
 
     @Test
     void isTokenValid_WhenTokenBelongsToSameUser_ThenReturnTrue()
     {
         // Given
-        UserEntity expectedUser = UserTestDataFactory.userAdmin();
+        UserEntity user = UserTestDataFactory.userAdmin();
+        String accessToken = jwtService.generateAccessTokenCookie(user).getValue();
 
         // When
-        String result = jwtService.generateAccessToken(expectedUser);
+        boolean result = jwtService.isTokenValid(accessToken, user);
 
         // Then
-        assertTrue(jwtService.isTokenValid(result, expectedUser));
+        assertTrue(result);
     }
 
     @Test
     void isTokenValid_WhenTokenBelongsToDifferentUser_ThenReturnFalse()
     {
         // Given
-        UserEntity expectedTokenUser = UserTestDataFactory.userAdmin();
-        UserEntity expectedUser = UserTestDataFactory.userUser();
+        UserEntity user = UserTestDataFactory.userUser();
+        UserEntity userAdmin = UserTestDataFactory.userAdmin();
+        String accessToken = jwtService.generateAccessTokenCookie(user).getValue();
 
         // When
-        String result = jwtService.generateAccessToken(expectedTokenUser);
+        boolean result = jwtService.isTokenValid(accessToken, userAdmin);
 
         // Then
-        assertFalse(jwtService.isTokenValid(result, expectedUser));
+        assertFalse(result);
     }
 
     @Test
@@ -167,41 +133,43 @@ public class JwtServiceTest
                 -1,
                 -1
         );
-        UserEntity expectedUser = UserTestDataFactory.userAdmin();
+        UserEntity user = UserTestDataFactory.userUser();
+        String accessToken = jwtService.generateAccessTokenCookie(user).getValue();
 
         // When
-        String result = jwtService.generateAccessToken(expectedUser);
+        boolean result = jwtService.isTokenValid(accessToken, user);
 
         // Then
-        assertFalse(jwtService.isTokenValid(result, expectedUser));
+        assertFalse(result);
     }
 
     @Test
-    void extractSubject_WhenTokenIsValid_ThenReturnExpectedDni()
+    void getSubject_WhenTokenIsValid_ThenReturnExpectedDni()
     {
         // Given
-        UserEntity expectedUser = UserTestDataFactory.userStaff();
-        String dni = "12345678";
+        UserEntity user = UserTestDataFactory.userUser();
+        String expectedDni = "87654321";
+        String accessToken = jwtService.generateAccessTokenCookie(user).getValue();
 
         // When
-        String result = jwtService.generateAccessToken(expectedUser);
+        String result = jwtService.getSubject(accessToken);
 
         // Then
-        assertEquals(dni, jwtService.extractSubject(result));
+        assertEquals(expectedDni, result);
     }
 
     @Test
-    void extractSubject_WhenTokenIsMalformed_ThenThrowException()
+    void getSubject_WhenTokenIsMalformed_ThenThrowException()
     {
         // Given
         String malformedToken = "malformedToken";
 
         // Then
-        assertThrows(InvalidTokenException.class, () -> jwtService.extractSubject(malformedToken));
+        assertThrows(InvalidTokenException.class, () -> jwtService.getSubject(malformedToken));
     }
 
     @Test
-    void extractSubject_WhenTokenIsExpired_ThenThrowException()
+    void getSubject_WhenTokenIsExpired_ThenThrowException()
     {
         // Given
         jwtService = new JwtService(
@@ -209,33 +177,23 @@ public class JwtServiceTest
                 -1,
                 -1
         );
-        UserEntity expectedUser = UserTestDataFactory.userUser();
+        UserEntity user = UserTestDataFactory.userUser();
+        String accessToken = jwtService.generateAccessTokenCookie(user).getValue();
 
-        // When
-        String expiredToken = jwtService.generateAccessToken(expectedUser);
-
-        // Then
-        assertThrows(InvalidTokenException.class, () -> jwtService.extractSubject(expiredToken));
+        // When & Then
+        assertThrows(InvalidTokenException.class, () -> jwtService.getSubject(accessToken));
     }
 
     @Test
-    void emptyCookie_WhenCookieHasTooken_ThenReturnEmptyCookie()
+    void emptyCookie_WhenNameIsProvided_ThenReturnEmptyCookie()
     {
         // Given
-        UserEntity user = UserTestDataFactory.userUser();
-        ResponseCookie refreshTokenCookie = jwtService.generateRefreshTokenCookie(jwtService.generateRefreshToken(user));
-        String cookieName = TokenType.REFRESH_TOKEN.name();
-        ResponseCookie expectedEmptyCookie = ResponseCookie.from(cookieName, "")
-                .httpOnly(true)
-                .secure(true)
-                .sameSite("Strict")
-                .path("/")
-                .maxAge(0)
-                .build();
+        String cookieName = "access_token";
 
-        // When & Then
-        ResponseCookie result = jwtService.emptyCookie(refreshTokenCookie.getName());
+        // When
+        ResponseCookie result = jwtService.emptyCookie(cookieName);
 
-        assertEquals(expectedEmptyCookie, result);
+        // Then
+        assertEquals("", result.getValue());
     }
 }

@@ -4,6 +4,7 @@ import com.project.gym.entity.UserEntity;
 import com.project.gym.entity.enums.TokenType;
 import com.project.gym.exception.CookieNotFoundException;
 import com.project.gym.exception.InvalidTokenException;
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -16,8 +17,8 @@ import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.Date;
-import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -34,81 +35,40 @@ public class JwtService
     @Value("${jwt.refresh.expiration}")
     private long refreshExpiration;
 
-    public String generateAccessToken(UserEntity user)
+    public ResponseCookie generateAccessTokenCookie(UserEntity user)
     {
-        return buildToken(user, accessExpiration, TokenType.ACCESS_TOKEN);
+        String accessToken = buildToken(user, accessExpiration, TokenType.ACCESS);
+        return buildCookie("access-token", accessToken, 15);
     }
 
-    public String generateRefreshToken(UserEntity user)
+    public ResponseCookie generateRefreshTokenCookie(UserEntity user)
     {
-        return buildToken(user, refreshExpiration, TokenType.REFRESH_TOKEN);
-    }
-
-    public Map<String, ResponseCookie> generateTokenCookies(String accessToken, String refreshToken)
-    {
-        ResponseCookie accessCookie = generateAccessTokenCookie(accessToken);
-        ResponseCookie refreshCookie = generateRefreshTokenCookie(refreshToken);
-
-        return Map.of("access_token", accessCookie,
-                "refresh_token", refreshCookie);
-    }
-
-    public ResponseCookie generateAccessTokenCookie(String token)
-    {
-        return ResponseCookie.from(TokenType.ACCESS_TOKEN.name(), token)
-                .httpOnly(true)
-                .secure(true)
-                .sameSite("Strict")
-                .path("/")
-                .maxAge(Duration.ofMinutes(15))
-                .build();
-    }
-
-    public ResponseCookie generateRefreshTokenCookie(String token)
-    {
-        return ResponseCookie.from(TokenType.REFRESH_TOKEN.name(), token)
-                .httpOnly(true)
-                .secure(true)
-                .sameSite("Strict")
-                .path("/")
-                .maxAge(Duration.ofHours(1))
-                .build();
+        String refreshToken = buildToken(user, refreshExpiration, TokenType.REFRESH);
+        return buildCookie("refresh-token", refreshToken, 1440);
     }
 
     public ResponseCookie emptyCookie(String name)
     {
-        return ResponseCookie.from(name, "")
-                .httpOnly(true)
-                .secure(true)
-                .sameSite("Strict")
-                .path("/")
-                .maxAge(0)
-                .build();
+        return buildCookie(name, "", 0);
     }
 
-    public String extractCookiesToken(Cookie[] cookies, TokenType tokenType)
+    public String getTokenFromCookies(Cookie[] cookies, TokenType tokenType)
     {
         if (cookies == null)
         {
-            throw new CookieNotFoundException("No cookies found.");
+            throw new CookieNotFoundException("Cookies not found.");
         }
 
-        for (Cookie cookie : cookies)
-        {
-            if (tokenType.name().equals(cookie.getName()))
-            {
-                return cookie.getValue();
-            }
-        }
-        throw new CookieNotFoundException(tokenType.name() + " cookie not found.");
+        // Throws exception if the token is not found.
+        return findCookieToken(cookies, tokenType);
     }
 
     public boolean isTokenValid(String token, UserEntity user)
     {
         try
         {
-            String tokenDni = extractSubject(token);
-            return user.getDni().equals(tokenDni) && extractExpiration(token).after(new Date());
+            String tokenDni = getSubject(token);
+            return user.getDni().equals(tokenDni) && getExpiration(token).after(new Date());
         }
         catch (JwtException | InvalidTokenException e)
         {
@@ -116,7 +76,22 @@ public class JwtService
         }
     }
 
-    public String extractSubject(String token)
+    public String getSubject(String token)
+    {
+        return parseToken(token).getSubject();
+    }
+
+    public String getTokenType(String token)
+    {
+        return parseToken(token).get("type", String.class).toLowerCase();
+    }
+
+    private Date getExpiration(String token)
+    {
+        return parseToken(token).getExpiration();
+    }
+
+    private Claims parseToken(String token)
     {
         try
         {
@@ -124,29 +99,17 @@ public class JwtService
                     .verifyWith(secretKey())
                     .build()
                     .parseSignedClaims(token)
-                    .getPayload()
-                    .getSubject();
+                    .getPayload();
         }
         catch (JwtException e)
         {
-            throw new InvalidTokenException("Invalid JWT Token.");
+            throw new InvalidTokenException("Invalid or expired JWT token.");
         }
-    }
-
-    private Date extractExpiration(String token)
-    {
-        return Jwts.parser()
-                .verifyWith(secretKey())
-                .build()
-                .parseSignedClaims(token)
-                .getPayload()
-                .getExpiration();
     }
 
     private String buildToken(UserEntity user, long expiration, TokenType type)
     {
-        return Jwts
-                .builder()
+        return Jwts.builder()
                 .id(UUID.randomUUID().toString())
                 .subject(user.getDni())
                 .claim("role", user.getRole())
@@ -155,6 +118,26 @@ public class JwtService
                 .expiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(secretKey())
                 .compact();
+    }
+
+    private ResponseCookie buildCookie(String name, String token, int durationOfMinutes)
+    {
+        return ResponseCookie.from(name, token)
+                .httpOnly(true)
+                .secure(true)
+                .sameSite("Strict")
+                .path("/")
+                .maxAge(Duration.ofMinutes(durationOfMinutes))
+                .build();
+    }
+
+    private String findCookieToken(Cookie[] cookies, TokenType tokenType)
+    {
+        return Arrays.stream(cookies)
+                .filter(c -> c.getName().equals(tokenType.name().toLowerCase() + "-token"))
+                .map(Cookie::getValue)
+                .findFirst()
+                .orElseThrow(() -> new CookieNotFoundException(tokenType.name() + " token cookie not found."));
     }
 
     private SecretKey secretKey()
