@@ -34,18 +34,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain) throws ServletException, IOException
     {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.isAuthenticated())
+        if (isAuthenticated())
         {
             filterChain.doFilter(request, response);
             return;
         }
 
-        String path = request.getRequestURI();
-        if (path.startsWith("/api/v1/auth") ||
-                path.startsWith("/swagger-ui") ||
-                path.startsWith("/v3/api-docs") ||
-                path.startsWith("/api/v1/whatsapp"))
+        if (isPublicPath(request))
         {
             filterChain.doFilter(request, response);
             return;
@@ -53,47 +48,68 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter
 
         if (request.getCookies() == null)
         {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.setContentType("application/json");
-            response.getWriter().write("{\"error\": \"JWT cookie not found.\"}");
+            sendErrorMessage(response, HttpServletResponse.SC_UNAUTHORIZED, "JWT cookie not found.");
             return;
         }
 
-        String accessToken = jwtService.extractCookiesToken(request.getCookies(), TokenType.ACCESS_TOKEN);
         try
         {
-            String subject = jwtService.extractSubject(accessToken);
-            UserEntity user = userRepository.findByDni(subject)
-                    .orElseThrow(() -> new UsernameNotFoundException("User not found."));
-            if (jwtService.isTokenValid(accessToken, user))
-            {
-                UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
-                        user,
-                        null,
-                        user.getAuthorities()
-                );
-
-                authenticationToken.setDetails(
-                        new WebAuthenticationDetailsSource().buildDetails(request)
-                );
-
-                SecurityContextHolder.getContext().setAuthentication(authenticationToken);
-            }
+            authenticateRequest(request);
         }
         catch (UsernameNotFoundException e)
         {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.setContentType("application/json");
-            response.getWriter().write("{\"error\": \"User not found.\"}");
+            sendErrorMessage(response, HttpServletResponse.SC_NOT_FOUND, "User not found.");
             return;
         }
         catch (JwtException e)
         {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.setContentType("application/json");
-            response.getWriter().write("{\"error\": \"Invalid or expired JWT token.\"}");
+            sendErrorMessage(response, HttpServletResponse.SC_UNAUTHORIZED, "Invalid or expired JWT token.");
             return;
         }
+
         filterChain.doFilter(request, response);
+    }
+
+    private boolean isAuthenticated()
+    {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        return authentication != null && authentication.isAuthenticated();
+    }
+
+    private boolean isPublicPath(HttpServletRequest request)
+    {
+        String path = request.getRequestURI();
+        return path.startsWith("/api/v1/auth") ||
+                path.startsWith("/swagger-ui") ||
+                path.startsWith("/v3/api-docs") ||
+                path.startsWith("/api/v1/whatsapp");
+    }
+
+    private void authenticateRequest(HttpServletRequest request)
+    {
+        String accessToken = jwtService.getTokenFromCookies(request.getCookies(), TokenType.ACCESS);
+
+        String subject = jwtService.getSubject(accessToken);
+        UserEntity user = userRepository.findByDni(subject)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found."));
+
+        if (jwtService.isTokenValid(accessToken, user) && jwtService.getTokenType(accessToken).equals("access"))
+        {
+            UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
+                    user,
+                    null,
+                    user.getAuthorities()
+            );
+
+            authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+            SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+        }
+    }
+
+    private void sendErrorMessage(HttpServletResponse response, int status, String message) throws IOException
+    {
+        response.setStatus(status);
+        response.setContentType("application/json");
+        response.getWriter().write("{\"error\": \"" + message + "\"}");
     }
 }
