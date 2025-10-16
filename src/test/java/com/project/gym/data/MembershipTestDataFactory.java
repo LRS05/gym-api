@@ -13,8 +13,7 @@ public class MembershipTestDataFactory
 {
     public static MembershipEntity userRegisteredMembership()
     {
-        return MembershipEntity
-                .builder()
+        return MembershipEntity.builder()
                 .id(1)
                 .user(UserTestDataFactory.userUser())
                 .userDni("87654321")
@@ -28,8 +27,7 @@ public class MembershipTestDataFactory
 
     public static MembershipEntity userNotRegisteredMembership()
     {
-        return MembershipEntity
-                .builder()
+        return MembershipEntity.builder()
                 .id(2)
                 .user(null)
                 .userDni("99999999")
@@ -43,8 +41,7 @@ public class MembershipTestDataFactory
 
     public static MembershipEntity expiredMembership()
     {
-        return MembershipEntity
-                .builder()
+        return MembershipEntity.builder()
                 .id(3)
                 .user(UserTestDataFactory.userUser())
                 .userDni("87654321")

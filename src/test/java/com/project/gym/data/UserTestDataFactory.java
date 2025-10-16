@@ -12,8 +12,7 @@ public class UserTestDataFactory
 {
     public static UserEntity userAdmin()
     {
-        return UserEntity
-                .builder()
+        return UserEntity.builder()
                 .id(1)
                 .role(Role.ADMIN)
                 .dni("46622977")
@@ -28,8 +27,7 @@ public class UserTestDataFactory
 
     public static UserEntity userStaff()
     {
-        return UserEntity
-                .builder()
+        return UserEntity.builder()
                 .id(2)
                 .role(Role.STAFF)
                 .dni("12345678")
@@ -44,8 +42,7 @@ public class UserTestDataFactory
 
     public static UserEntity userUser()
     {
-        return UserEntity
-                .builder()
+        return UserEntity.builder()
                 .id(3)
                 .role(Role.USER)
                 .dni("87654321")
