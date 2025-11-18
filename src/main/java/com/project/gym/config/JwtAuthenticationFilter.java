@@ -2,6 +2,8 @@ package com.project.gym.config;
 
 import com.project.gym.entity.UserEntity;
 import com.project.gym.entity.enums.TokenType;
+import com.project.gym.exception.CookieNotFoundException;
+import com.project.gym.exception.InvalidTokenException;
 import com.project.gym.repository.UserRepository;
 import com.project.gym.service.JwtService;
 import io.jsonwebtoken.JwtException;
@@ -34,36 +36,46 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain) throws ServletException, IOException
     {
-        if (isAuthenticated())
+        /*
+         * If the current user is already authenticated,
+         * or the request is targeting a public endpoint,
+         * skip the filter and continue the chain.
+         */
+        if (isAuthenticated() || isPublicPath(request.getServletPath()))
         {
             filterChain.doFilter(request, response);
-            return;
-        }
-
-        if (isPublicPath(request))
-        {
-            filterChain.doFilter(request, response);
-            return;
-        }
-
-        if (request.getCookies() == null)
-        {
-            sendErrorMessage(response, HttpServletResponse.SC_UNAUTHORIZED, "JWT cookie not found.");
             return;
         }
 
         try
         {
+            /*
+             * Retrieves the access token from cookies, ensuring that:
+             * - The cookie exists.
+             * - The token type is access.
+             * - The token belongs to the corresponding user.
+             * - The token is not expired.
+             *
+             * Throws an exception otherwise.
+             *
+             * If valid, sets a UsernamePasswordAuthenticationToken
+             * in the SecurityContext.
+             */
             authenticateRequest(request);
+        }
+        catch (CookieNotFoundException e)
+        {
+            sendErrorMessage(response, HttpServletResponse.SC_UNAUTHORIZED, "Access token cookie not found.");
+            return;
         }
         catch (UsernameNotFoundException e)
         {
-            sendErrorMessage(response, HttpServletResponse.SC_NOT_FOUND, "User not found.");
+            sendErrorMessage(response, HttpServletResponse.SC_UNAUTHORIZED, "User of the token not found.");
             return;
         }
         catch (JwtException e)
         {
-            sendErrorMessage(response, HttpServletResponse.SC_UNAUTHORIZED, "Invalid or expired JWT token.");
+            sendErrorMessage(response, HttpServletResponse.SC_UNAUTHORIZED, e.getMessage());
             return;
         }
 
@@ -76,9 +88,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter
         return authentication != null && authentication.isAuthenticated();
     }
 
-    private boolean isPublicPath(HttpServletRequest request)
+    private boolean isPublicPath(String path)
     {
-        String path = request.getRequestURI();
         return path.startsWith("/api/v1/auth") ||
                 path.startsWith("/swagger-ui") ||
                 path.startsWith("/v3/api-docs") ||
@@ -89,21 +100,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter
     {
         String accessToken = jwtService.getTokenFromCookies(request.getCookies(), TokenType.ACCESS);
 
-        String subject = jwtService.getSubject(accessToken);
-        UserEntity user = userRepository.findByDni(subject)
+        UserEntity user =  userRepository.findByDni(jwtService.getSubject(accessToken))
                 .orElseThrow(() -> new UsernameNotFoundException("User not found."));
 
-        if (jwtService.isTokenValid(accessToken, user) && jwtService.getTokenType(accessToken).equals("access"))
+        if (!jwtService.isTokenValid(accessToken, user) || !jwtService.getTokenType(accessToken).equals("access"))
         {
-            UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
-                    user,
-                    null,
-                    user.getAuthorities()
-            );
-
-            authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-            SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+            throw new InvalidTokenException("Invalid or expired access token.");
         }
+
+        UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
+                user,
+                null,
+                user.getAuthorities()
+        );
+
+        authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+        SecurityContextHolder.getContext().setAuthentication(authenticationToken);
     }
 
     private void sendErrorMessage(HttpServletResponse response, int status, String message) throws IOException
