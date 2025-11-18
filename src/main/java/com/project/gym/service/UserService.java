@@ -6,6 +6,7 @@ import com.project.gym.dto.PhoneNumberRequestDTO;
 import com.project.gym.dto.UserResponseDTO;
 import com.project.gym.entity.UserEntity;
 import com.project.gym.exception.InvalidPasswordException;
+import com.project.gym.exception.PhoneNumberAlreadyExistsException;
 import com.project.gym.mapper.UserMapper;
 import com.project.gym.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -47,6 +48,11 @@ public class UserService
 
     public String addPhoneNumber(PhoneNumberRequestDTO requestDTO)
     {
+        if (userRepository.existsByPhoneNumber("54" + requestDTO.phoneNumber()))
+        {
+            throw new PhoneNumberAlreadyExistsException("Phone number is already registered.");
+        }
+
         UserEntity user = findCurrentUserOrThrow();
 
         // The "54" is the country code for Argentina.

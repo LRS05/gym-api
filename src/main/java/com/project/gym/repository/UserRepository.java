@@ -16,4 +16,6 @@ public interface UserRepository extends JpaRepository<UserEntity, Integer>
     Optional<UserEntity> findByDni(String dni);
 
     boolean existsByDni(String dni);
+
+    boolean existsByPhoneNumber(String phoneNumber);
 }
