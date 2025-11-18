@@ -15,8 +15,6 @@ import java.util.List;
 @Configuration
 public class OpenApiConfig
 {
-    private static final String SECURITY_SCHEME = "bearerAuth";
-
     @Bean
     public OpenAPI openAPI()
     {
@@ -31,21 +29,18 @@ public class OpenApiConfig
                         )
                 )
                 .servers(List.of(
-                                new Server().url("http://localhost:8080").description("DEV Server")
-                        )
-                )
+                        new Server().url("http://localhost:8080").description("DEV Server")
+                ))
                 .components(new Components()
-                        .addSecuritySchemes(SECURITY_SCHEME,
+                        .addSecuritySchemes("cookieAuth",
                                 new SecurityScheme()
-                                        .name(SECURITY_SCHEME)
-                                        .type(SecurityScheme.Type.HTTP)
-                                        .scheme("bearer")
-                                        .bearerFormat("JWT")
-                                        .description("Authorization Header with JWT Token")
+                                        .type(SecurityScheme.Type.APIKEY)
+                                        .in(SecurityScheme.In.COOKIE)
+                                        .name("access-token")
+                                        .description("JWT automatically sent by the browser through an HttpOnly cookie")
                         )
                 )
-                .addSecurityItem(new SecurityRequirement()
-                        .addList(SECURITY_SCHEME)
-                );
+                .addSecurityItem(new SecurityRequirement().addList("cookieAuth"));
     }
 }
+
