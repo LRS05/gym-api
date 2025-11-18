@@ -28,6 +28,12 @@ public record MembershipResponseDTO(
         LocalDate paymentDate,
 
         @JsonProperty("next_payment_date")
-        LocalDate nextPaymentDate
+        LocalDate nextPaymentDate,
+
+        @JsonProperty("created_by")
+        String createdBy,
+
+        @JsonProperty("last_modified_by")
+        String lastModifiedBy
 ) {
 }
