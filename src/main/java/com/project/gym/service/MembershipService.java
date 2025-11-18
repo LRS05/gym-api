@@ -63,9 +63,12 @@ public class MembershipService
 
     public List<MembershipResponseDTO> getAllByDni(String dni)
     {
-        return membershipMapper.entityToDTO(
-                membershipRepository.findAllByUserDni(dni)
-        );
+        List<MembershipEntity> memberships = membershipRepository.findAllByUserDni(dni);
+        if (memberships.isEmpty())
+        {
+            throw new MembershipNotFoundException("Memberships not found.");
+        }
+        return membershipMapper.entityToDTO(memberships);
     }
 
     public MembershipResponseDTO getLastMembershipByDni(String dni)
@@ -114,14 +117,13 @@ public class MembershipService
     public void deleteAllByDni(String dni)
     {
         List<MembershipEntity> memberships = membershipRepository.findAllByUserDni(dni);
-
         if (memberships.isEmpty())
         {
             throw new MembershipNotFoundException("Memberships not found.");
         }
 
         membershipRepository.deleteAll(memberships);
-        decrementActiveMembershipsMetrics(memberships);
+        memberships.forEach(this::decrementActiveMembershipMetrics);
         log.info("Deleted {} memberships with user_dni={}",memberships.size(), dni);
     }
 
@@ -175,17 +177,6 @@ public class MembershipService
     private void incrementActiveMembershipsMetrics()
     {
         customMetrics.incrementActiveMemberships();
-    }
-
-    private void decrementActiveMembershipsMetrics(List<MembershipEntity> memberships)
-    {
-        for (MembershipEntity m : memberships)
-        {
-            if (m.getStatus() == MembershipStatus.ACTIVE)
-            {
-                customMetrics.decrementActiveMemberships();
-            }
-        }
     }
 
     private void decrementActiveMembershipMetrics(MembershipEntity membership)

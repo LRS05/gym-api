@@ -70,7 +70,7 @@ public class JwtService
             String tokenDni = getSubject(token);
             return user.getDni().equals(tokenDni) && getExpiration(token).after(new Date());
         }
-        catch (JwtException | InvalidTokenException e)
+        catch (JwtException e)
         {
             return false;
         }
@@ -103,7 +103,7 @@ public class JwtService
         }
         catch (JwtException e)
         {
-            throw new InvalidTokenException("Invalid or expired JWT token.");
+            throw new InvalidTokenException("Invalid or expired JWT.");
         }
     }
 

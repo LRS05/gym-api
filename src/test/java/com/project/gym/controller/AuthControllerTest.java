@@ -15,7 +15,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -26,7 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Transactional
 @ActiveProfiles("test")
 @AutoConfigureMockMvc(addFilters = false)
-public class AuthControllerIntegrationTest
+public class AuthControllerTest
 {
     private static final String SECRET_KEY_TEST = "Z29yZG9ib2xpdmlhbm9sYWNvbmNoYWRldHVtYWRyZXRldm95YXZpb2xhcmRlYWxvdmlvbGFiYWphYWphamRlYXJlbW9nb2xpY28";
 
@@ -43,11 +43,11 @@ public class AuthControllerIntegrationTest
     private JwtService jwtService;
 
     @Test
-    void register_WhenValidRequest_ThenReturnCreated() throws Exception
+    void register_whenUserIsNotRegistered_thenRegisterUserAndReturnTokens() throws Exception
     {
         RegisterRequestDTO requestDTO = new RegisterRequestDTO(
                 "99999999",
-                "Abc123!!",
+                "Gordomono8!",
                 Gender.MALE,
                 "Angelo",
                 "Rochista"
@@ -62,24 +62,18 @@ public class AuthControllerIntegrationTest
     }
 
     @Test
-    void register_WhenInvalidRequest_ThenReturnBadRequest() throws Exception
+    void register_whenDTOIsInvalid_thenThrowBadRequest() throws Exception
     {
-        RegisterRequestDTO requestDTO = new RegisterRequestDTO(
-                null,
-                null,
-                Gender.MALE,
-                "Angelo",
-                "Rochista"
-        );
+        String invalidDTO = "invalid-dto";
 
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(requestDTO)))
+                        .content(objectMapper.writeValueAsString(invalidDTO)))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
-    void register_WhenUserAlreadyExists_ThenReturnConflict() throws Exception
+    void register_whenUserIsAlreadyRegistered_thenThrowConflict() throws Exception
     {
         RegisterRequestDTO requestDTO = new RegisterRequestDTO(
                 "46622977",
@@ -96,25 +90,45 @@ public class AuthControllerIntegrationTest
     }
 
     @Test
-    void authenticate_WhenValidCredentials_ThenReturnOk() throws Exception
+    @WithMockUser(roles = "USER", username = "87654321")
+    void register_whenUserIsAuthenticated_thenThrowForbidden() throws Exception
+    {
+        RegisterRequestDTO requestDTO = new RegisterRequestDTO(
+                "12012012",
+                "Gordomono8!",
+                Gender.MALE,
+                "Enzo",
+                "Viviani"
+        );
+
+        mockMvc.perform(post("/api/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestDTO)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void authenticate_whenCredentialsAreValid_thenReturnAuthenticateAndReturnTokens() throws Exception
     {
         AuthRequestDTO requestDTO = new AuthRequestDTO(
                 "46622977",
-                "gordomono"
+                "Gordomono8!"
         );
 
         mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDTO)))
+                .andExpect(cookie().exists("access-token"))
+                .andExpect(cookie().exists("refresh-token"))
                 .andExpect(status().isOk());
     }
 
     @Test
-    void authenticate_WhenInvalidCredentials_ThenReturnUnauthorized() throws Exception
+    void authenticate_whenCredentialsAreInvalid_thenThrowUnauthorized() throws Exception
     {
         AuthRequestDTO requestDTO = new AuthRequestDTO(
                 "46622977",
-                "abc123"
+                "hola1234"
         );
 
         mockMvc.perform(post("/api/v1/auth/login")
@@ -124,21 +138,31 @@ public class AuthControllerIntegrationTest
     }
 
     @Test
-    void authenticate_WhenMissingCredentials_ThenReturnBadRequest() throws Exception
+    void authenticate_whenMissingCredentials_thenReturnBadRequest() throws Exception
+    {
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(""))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(roles = "USER", username = "87654321")
+    void authenticate_whenUserIsAuthenticated_thenThrowForbidden() throws Exception
     {
         AuthRequestDTO requestDTO = new AuthRequestDTO(
-                null,
-                null
+                "87654321",
+                "Gordomono8!"
         );
 
         mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDTO)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isForbidden());
     }
 
     @Test
-    void refresh_WhenValidRefreshToken_ThenReturnNewAccessToken() throws Exception
+    void refresh_whenRefreshTokenIsValid_thenReturnNewAccessToken() throws Exception
     {
         UserEntity user = userRepository.findByDni("87654321").orElse(null);
 
@@ -150,14 +174,14 @@ public class AuthControllerIntegrationTest
     }
 
     @Test
-    void refresh_WhenMissingCookies_ThenReturnUnauthorized() throws Exception
+    void refresh_whenCookiesDoNotExist_thenThrowUnauthorized() throws Exception
     {
         mockMvc.perform(post("/api/v1/auth/refresh"))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
-    void refresh_WhenRefreshTokenCookieDoesNotExist_ThenReturnUnauthorized() throws Exception
+    void refresh_whenRefreshTokenCookieDoesNotExist_thenThrowUnauthorized() throws Exception
     {
         mockMvc.perform(post("/api/v1/auth/refresh")
                         .cookie(new Cookie("access-token", "")))
@@ -165,14 +189,11 @@ public class AuthControllerIntegrationTest
     }
 
     @Test
-    void refresh_WhenUserNotFound_ThenReturnNotFound() throws Exception
+    void refresh_whenUserDoesNotExist_thenThrowNotFound() throws Exception
     {
-        UserEntity user = userRepository.findByDni("87654321")
-                .orElseThrow(() -> new UsernameNotFoundException("User not found."));
-
+        UserEntity user = userRepository.findByDni("87654321").orElse(null);
         String refreshToken = jwtService.generateRefreshTokenCookie(user).getValue();
-
-        userRepository.delete(user);
+        userRepository.deleteById(3);
 
         mockMvc.perform(post("/api/v1/auth/refresh")
                         .cookie(new Cookie("refresh-token", refreshToken)))
@@ -180,7 +201,7 @@ public class AuthControllerIntegrationTest
     }
 
     @Test
-    void refresh_WhenTokenIsInvalid_ThenReturnUnauthorized() throws Exception
+    void refresh_whenTokenIsInvalid_thenThrowUnauthorized() throws Exception
     {
         String invalidRefreshToken = "invalid-refresh-token";
 
@@ -190,7 +211,7 @@ public class AuthControllerIntegrationTest
     }
 
     @Test
-    void refresh_WhenTokenIsExpired_ThenReturnUnauthorized() throws Exception
+    void refresh_whenTokenIsExpired_thenThrowUnauthorized() throws Exception
     {
         jwtService = new JwtService(
                 SECRET_KEY_TEST,
@@ -207,7 +228,7 @@ public class AuthControllerIntegrationTest
     }
 
     @Test
-    void logout_WhenUserHasCookies_ThenReturnOk() throws Exception
+    void logout_whenCookiesAreNotEmpty_thenEmptyCookies() throws Exception
     {
         mockMvc.perform(post("/api/v1/auth/logout")
                         .cookie(new Cookie("access-token", "access-token-value"))

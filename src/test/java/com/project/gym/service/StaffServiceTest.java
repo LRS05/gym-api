@@ -5,7 +5,7 @@ import com.project.gym.entity.UserEntity;
 import com.project.gym.entity.enums.Role;
 import com.project.gym.mapper.UserMapper;
 import com.project.gym.repository.UserRepository;
-import com.project.gym.data.UserTestDataFactory;
+import com.project.gym.data.UserFactory;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -34,22 +34,11 @@ public class StaffServiceTest
     private StaffService staffService;
 
     @Test
-    void getUsers_WhenUserExist_ThenReturnUsers()
+    void getUsers_whenUsersExist_thenReturnUserList()
     {
         // Given
-        List<UserEntity> expectedUsers = UserTestDataFactory.userList();
-        expectedUsers.forEach(u -> u.setRole(Role.USER));
-        List<UserResponseDTO> expectedDTOs = expectedUsers.stream()
-                .map(u -> new UserResponseDTO(
-                        u.getId(),
-                        u.getRole(),
-                        u.getGender(),
-                        u.getDni(),
-                        u.getFirstName(),
-                        u.getLastName(),
-                        u.getCreationDate()
-                ))
-                .toList();
+        List<UserEntity> expectedUsers = List.of(UserFactory.userUser());
+        List<UserResponseDTO> expectedDTOs = List.of(UserFactory.userUserDTO());
 
         // When
         when(userRepository.findAllByRole(Role.USER)).thenReturn(expectedUsers);
@@ -58,17 +47,16 @@ public class StaffServiceTest
         List<UserResponseDTO> result = staffService.getUsers();
 
         // Then
-        verify(userRepository).findAllByRole(Role.USER);
-        verify(userMapper).entityToDTO(expectedUsers);
-
         assertEquals(expectedDTOs, result);
         assertTrue(expectedDTOs.stream().allMatch(u -> u.role() == Role.USER));
+
+        verify(userRepository).findAllByRole(Role.USER);
+        verify(userMapper).entityToDTO(expectedUsers);
     }
 
     @Test
-    void getUsers_WhenNoUsersExist_ThenReturnEmptyList()
+    void getUsers_whenUsersDoNotExist_thenReturnEmptyList()
     {
-
         // When
         when(userRepository.findAllByRole(Role.USER)).thenReturn(new ArrayList<>());
         when(userMapper.entityToDTO(anyList())).thenReturn(new ArrayList<>());
@@ -76,19 +64,19 @@ public class StaffServiceTest
         List<UserResponseDTO> result = staffService.getUsers();
 
         // Then
+        assertTrue(result.isEmpty());
+
         verify(userRepository).findAllByRole(Role.USER);
         verify(userMapper).entityToDTO(anyList());
-
-        assertTrue(result.isEmpty());
     }
 
     @Test
-    void getUserByDni_WhenUserExistsAndHasRoleUser_ThenReturnUser()
+    void getUserByDni_whenUserExistsAndIsNotAdminOrStaff_thenReturnUser()
     {
         // Given
         String dni = "87654321";
-        UserEntity expectedUser = UserTestDataFactory.userUser();
-        UserResponseDTO expectedDTO = UserTestDataFactory.userUserDTO();
+        UserEntity expectedUser = UserFactory.userUser();
+        UserResponseDTO expectedDTO = UserFactory.userUserDTO();
 
         // When
         when(userRepository.findByDni(dni)).thenReturn(Optional.of(expectedUser));
@@ -105,43 +93,44 @@ public class StaffServiceTest
     }
 
     @Test
-    void getUserByDni_WhenUserDoesNotExist_ThenThrowException()
+    void getUserByDni_whenUserDoesNotExist_thenThrowException()
     {
         // Given
         String dni = "99999999";
 
         // When
         when(userRepository.findByDni(dni)).thenReturn(Optional.empty());
-        assertThrows(UsernameNotFoundException.class, () -> staffService.getUserByDni(dni));
 
         // Then
+        assertThrows(UsernameNotFoundException.class, () -> staffService.getUserByDni(dni));
+
         verify(userRepository).findByDni(dni);
     }
 
     @Test
-    void getUserByDni_WhenUserExistsAndHasInvalidRole_ThenThrowException()
+    void getUserByDni_whenUserIsAdminOrStaff_thenThrowException()
     {
         // Given
         String dni = "46622977";
-        UserEntity expectedUser = UserTestDataFactory.userAdmin();
+        UserEntity expectedUser = UserFactory.userAdmin();
 
         // When
         when(userRepository.findByDni(dni)).thenReturn(Optional.of(expectedUser));
-        assertThrows(AccessDeniedException.class, () -> staffService.getUserByDni(dni));
 
         // Then
-        verify(userRepository).findByDni(dni);
-
+        assertThrows(AccessDeniedException.class, () -> staffService.getUserByDni(dni));
         assertNotEquals(Role.USER, expectedUser.getRole());
+
+        verify(userRepository).findByDni(dni);
     }
 
     @Test
-    void getUserById_WhenUserExistsAndHasRoleUser_ThenReturnUser()
+    void getUserById_whenUserExistsAndIsNotAdminOrStaff_thenReturnUser()
     {
         // Given
         int id = 3;
-        UserEntity expectedUser = UserTestDataFactory.userUser();
-        UserResponseDTO expectedDTO = UserTestDataFactory.userUserDTO();
+        UserEntity expectedUser = UserFactory.userUser();
+        UserResponseDTO expectedDTO = UserFactory.userUserDTO();
 
         // When
         when(userRepository.findById(id)).thenReturn(Optional.of(expectedUser));
@@ -158,7 +147,7 @@ public class StaffServiceTest
     }
 
     @Test
-    void getUserById_WhenUserDoesNotExist_ThenThrowException()
+    void getUserById_whenUserDoesNotExist_thenThrowException()
     {
         // Given
         int id = 99999999;
@@ -172,11 +161,11 @@ public class StaffServiceTest
     }
 
     @Test
-    void getUserById_WhenUserExistsAndHasInvalidRole_ThenThrowException()
+    void getUserById_whenUserIsAdminOrStaff_thenThrowException()
     {
         // Given
         int id = 1;
-        UserEntity expectedUser = UserTestDataFactory.userAdmin();
+        UserEntity expectedUser = UserFactory.userAdmin();
 
         // When
         when(userRepository.findById(id)).thenReturn(Optional.of(expectedUser));

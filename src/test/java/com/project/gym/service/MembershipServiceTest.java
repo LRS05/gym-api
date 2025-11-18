@@ -15,8 +15,8 @@ import com.project.gym.exception.MembershipNotFoundException;
 import com.project.gym.mapper.MembershipMapper;
 import com.project.gym.repository.MembershipRepository;
 import com.project.gym.repository.UserRepository;
-import com.project.gym.data.MembershipTestDataFactory;
-import com.project.gym.data.UserTestDataFactory;
+import com.project.gym.data.MembershipFactory;
+import com.project.gym.data.UserFactory;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -54,7 +54,7 @@ public class MembershipServiceTest
     private MembershipService membershipService;
 
     @Test
-    void createMembership_WhenUserHasAccountAndPhoneNumberAndRoleUser_ThenReturnMembershipAndWhatsappMessage()
+    void createMembership_whenRequestIsValidAndUserHasPhoneNumber_thenReturnMembershipAndSendWhatsappMessage()
     {
         // Given
         String dni = "87654321";
@@ -62,9 +62,9 @@ public class MembershipServiceTest
                 MembershipType.ANNUALLY,
                 PaymentMethod.CARD
         );
-        UserEntity expectedUser = UserTestDataFactory.userUser();
-        MembershipEntity expectedMembership = MembershipTestDataFactory.userRegisteredMembership();
-        MembershipResponseDTO expectedMembershipDTO = MembershipTestDataFactory.userRegisteredMembershipDTO();
+        UserEntity expectedUser = UserFactory.userUser();
+        MembershipEntity expectedMembership = MembershipFactory.userRegisteredMembership();
+        MembershipResponseDTO expectedMembershipDTO = MembershipFactory.userRegisteredMembershipDTO();
 
         // When
         when(userRepository.findByDni(dni)).thenReturn(Optional.of(expectedUser));
@@ -75,19 +75,20 @@ public class MembershipServiceTest
         MembershipResponseDTO result = membershipService.createMembershipByDni(dni, requestDTO);
 
         // Then
-        verify(userRepository).findByDni(dni);
         verify(membershipRepository).save(captor.capture());
-        verify(whatsAppService).sendMembershipCreatedMessage(any(MembershipEntity.class), any(UserEntity.class));
-        verify(membershipMapper).entityToDTO(expectedMembership);
 
         assertEquals(expectedUser, captor.getValue().getUser());
         assertEquals(expectedMembershipDTO, result);
         assertNotNull(expectedMembership.getUser().getPhoneNumber());
         assertDoesNotThrow(() -> whatsAppService.sendMembershipCreatedMessage(any(MembershipEntity.class), any(UserEntity.class)));
+
+        verify(userRepository).findByDni(dni);
+        verify(whatsAppService).sendMembershipCreatedMessage(any(MembershipEntity.class), any(UserEntity.class));
+        verify(membershipMapper).entityToDTO(expectedMembership);
     }
 
     @Test
-    void createMembership_WhenUserHasAccountAndDoesNotHavePhoneNumber_ThenReturnMembership()
+    void createMembership_whenUserDoesNotHavePhoneNumber_thenReturnMembership()
     {
         // Given
         String dni = "87654321";
@@ -95,11 +96,11 @@ public class MembershipServiceTest
                 MembershipType.ANNUALLY,
                 PaymentMethod.CARD
         );
-        UserEntity expectedUser = UserTestDataFactory.userUser();
+        UserEntity expectedUser = UserFactory.userUser();
         expectedUser.setPhoneNumber(null);
 
-        MembershipEntity expectedMembership = MembershipTestDataFactory.userRegisteredMembership();
-        MembershipResponseDTO expectedMembershipDTO = MembershipTestDataFactory.userRegisteredMembershipDTO();
+        MembershipEntity expectedMembership = MembershipFactory.userRegisteredMembership();
+        MembershipResponseDTO expectedMembershipDTO = MembershipFactory.userRegisteredMembershipDTO();
         expectedMembership.getUser().setPhoneNumber(null);
 
         // When
@@ -111,18 +112,19 @@ public class MembershipServiceTest
         MembershipResponseDTO result = membershipService.createMembershipByDni(dni, requestDTO);
 
         // Then
-        verify(userRepository).findByDni(dni);
         verify(membershipRepository).save(captor.capture());
-        verify(membershipMapper).entityToDTO(expectedMembership);
-        verifyNoInteractions(whatsAppService);
 
         assertEquals(result.userDni(), captor.getValue().getUserDni());
         assertEquals(expectedMembershipDTO, result);
         assertNull(expectedMembership.getUser().getPhoneNumber());
+
+        verify(userRepository).findByDni(dni);
+        verify(membershipMapper).entityToDTO(expectedMembership);
+        verifyNoInteractions(whatsAppService);
     }
 
     @Test
-    void createMembership_WhenUserIsStaffOrAdmin_ThenThrowException()
+    void createMembership_whenUserIsAdminOrStaff_thenThrowException()
     {
         // Given
         String dni = "12345678";
@@ -130,22 +132,22 @@ public class MembershipServiceTest
                 MembershipType.MONTHLY,
                 PaymentMethod.CASH
         );
-        UserEntity expectedUser = UserTestDataFactory.userStaff();
+        UserEntity expectedUser = UserFactory.userStaff();
 
         // When
         when(userRepository.findByDni(dni)).thenReturn(Optional.of(expectedUser));
         assertThrows(InvalidMembershipAssignmentException.class, () -> membershipService.createMembershipByDni(dni, requestDTO));
 
         // Then
+        assertNotEquals(Role.USER, expectedUser.getRole());
+
         verify(userRepository).findByDni(dni);
         verifyNoInteractions(membershipRepository);
         verifyNoInteractions(whatsAppService);
-
-        assertNotEquals(Role.USER, expectedUser.getRole());
     }
 
     @Test
-    void createMembership_WhenUserDoesNotHaveAccount_ThenReturnMembershipWithoutUser()
+    void createMembership_whenUserDoesNotHaveAnAccount_thenReturnMembershipWithoutUserId()
     {
         // Given
         String dni = "99999999";
@@ -153,8 +155,8 @@ public class MembershipServiceTest
                 MembershipType.MONTHLY,
                 PaymentMethod.CASH
         );
-        MembershipEntity expectedMembersip = MembershipTestDataFactory.userNotRegisteredMembership();
-        MembershipResponseDTO expectedMembershipDTO = MembershipTestDataFactory.userNotRegisteredMembershipDTO();
+        MembershipEntity expectedMembersip = MembershipFactory.userNotRegisteredMembership();
+        MembershipResponseDTO expectedMembershipDTO = MembershipFactory.userNotRegisteredMembershipDTO();
 
         // When
         when(userRepository.findByDni(dni)).thenReturn(Optional.empty());
@@ -165,21 +167,22 @@ public class MembershipServiceTest
         MembershipResponseDTO result = membershipService.createMembershipByDni(dni, requestDTO);
 
         // Then
-        verify(userRepository).findByDni(dni);
         verify(membershipRepository).save(captor.capture());
-        verify(membershipMapper).entityToDTO(expectedMembersip);
-        verifyNoInteractions(whatsAppService);
 
         assertNull(captor.getValue().getUser());
         assertEquals(expectedMembershipDTO, result);
+
+        verify(userRepository).findByDni(dni);
+        verify(membershipMapper).entityToDTO(expectedMembersip);
+        verifyNoInteractions(whatsAppService);
     }
 
     @Test
-    void getMembershipsByDate_WhenMembershipsExistInRange_ThenReturnMembershipsList()
+    void getMembershipsByDate_whenMembershipsExists_thenReturnMembershipList()
     {
         // Given
-        List<MembershipEntity> expectedMemberships = MembershipTestDataFactory.membershipListOf2025();
-        List<MembershipResponseDTO> expectedDTOs = MembershipTestDataFactory.membershipListOf2025DTO();
+        List<MembershipEntity> expectedMemberships = MembershipFactory.membershipListOf2025();
+        List<MembershipResponseDTO> expectedDTOs = MembershipFactory.membershipListOf2025DTO();
         LocalDate start = LocalDate.of(2025, 1, 1);
         LocalDate end = LocalDate.of(2025, 12, 31);
 
@@ -190,18 +193,17 @@ public class MembershipServiceTest
         List<MembershipResponseDTO> result = membershipService.getAllByDate(start, end);
 
         // Then
-        verify(membershipRepository).findAllByPaymentDateBetween(start, end);
-        verify(membershipMapper).entityToDTO(expectedMemberships);
-
         assertEquals(expectedDTOs, result);
-
         assertTrue(result.stream().allMatch(m ->
                 !m.paymentDate().isBefore(start) && !m.paymentDate().isAfter(end)
         ));
+
+        verify(membershipRepository).findAllByPaymentDateBetween(start, end);
+        verify(membershipMapper).entityToDTO(expectedMemberships);
     }
 
     @Test
-    void getMembershipsByDate_WhenNoMembershipsExistInRange_ThenReturnEmptyList()
+    void getMembershipsByDate_whenMembershipsDoNotExist_thenReturnEmptyList()
     {
         // Given
         LocalDate start = LocalDate.of(2100, 1, 1);
@@ -214,10 +216,10 @@ public class MembershipServiceTest
         List<MembershipResponseDTO> result = membershipService.getAllByDate(start, end);
 
         // Then
+        assertTrue(result.isEmpty());
+
         verify(membershipRepository).findAllByPaymentDateBetween(start, end);
         verify(membershipMapper).entityToDTO(anyList());
-
-        assertTrue(result.isEmpty());
     }
 
     @Test
@@ -225,8 +227,8 @@ public class MembershipServiceTest
     {
         // Given
         int id = 1;
-        MembershipEntity expectedMembership = MembershipTestDataFactory.userRegisteredMembership();
-        MembershipResponseDTO expectedDTO = MembershipTestDataFactory.userRegisteredMembershipDTO();
+        MembershipEntity expectedMembership = MembershipFactory.userRegisteredMembership();
+        MembershipResponseDTO expectedDTO = MembershipFactory.userRegisteredMembershipDTO();
 
         // When
         when(membershipRepository.findById(id)).thenReturn(Optional.of(expectedMembership));
@@ -235,10 +237,10 @@ public class MembershipServiceTest
         MembershipResponseDTO result = membershipService.getMembershipById(id);
 
         // Then
+        assertEquals(expectedDTO, result);
+
         verify(membershipRepository).findById(id);
         verify(membershipMapper).entityToDTO(expectedMembership);
-
-        assertEquals(expectedDTO, result);
     }
 
     @Test
@@ -250,9 +252,9 @@ public class MembershipServiceTest
         // When
         when(membershipRepository.findById(id)).thenReturn(Optional.empty());
 
+        // Then
         assertThrows(MembershipNotFoundException.class, () -> membershipService.getMembershipById(id));
 
-        // Then
         verify(membershipRepository).findById(id);
     }
 
@@ -261,8 +263,8 @@ public class MembershipServiceTest
     {
         // Given
         String dni = "87654321";
-        List<MembershipEntity> expectedMemberships = MembershipTestDataFactory.defaultUserMemberships();
-        List<MembershipResponseDTO> expectedDTOs = MembershipTestDataFactory.defaultUserMembershipsDTO();
+        List<MembershipEntity> expectedMemberships = MembershipFactory.defaultUserMemberships();
+        List<MembershipResponseDTO> expectedDTOs = MembershipFactory.defaultUserMembershipsDTO();
 
         // When
         when(membershipRepository.findAllByUserDni(dni)).thenReturn(expectedMemberships);
@@ -271,41 +273,37 @@ public class MembershipServiceTest
         List<MembershipResponseDTO> result = membershipService.getAllByDni(dni);
 
         // Then
-        verify(membershipRepository).findAllByUserDni(dni);
-        verify(membershipMapper).entityToDTO(expectedMemberships);
-
         assertEquals(expectedDTOs, result);
         assertTrue(result.stream().allMatch(m ->
                 m.userDni().equals(dni)
         ));
+
+        verify(membershipRepository).findAllByUserDni(dni);
+        verify(membershipMapper).entityToDTO(expectedMemberships);
     }
 
     @Test
-    void getMembershipsByDni_WhenNoMembershipsExistsForUser_ThenReturnEmptyList()
+    void getMembershipsByDni_whenNoMembershipsExistsForUser_thenThrowNotFound()
     {
         // Given
         String dni = "88888888";
 
         // When
         when(membershipRepository.findAllByUserDni(dni)).thenReturn(new ArrayList<>());
-        when(membershipMapper.entityToDTO(anyList())).thenReturn(new ArrayList<>());
-
-        List<MembershipResponseDTO> result = membershipService.getAllByDni(dni);
 
         // Then
-        verify(membershipRepository).findAllByUserDni(dni);
-        verify(membershipMapper).entityToDTO(anyList());
+        assertThrows(MembershipNotFoundException.class, () -> membershipService.getAllByDni(dni));
 
-        assertTrue(result.isEmpty());
+        verify(membershipRepository).findAllByUserDni(dni);
     }
 
     @Test
-    void getLastMembershipByDni_WhenMembershipExists_ThenReturnMembership()
+    void getLastMembershipByDni_whenMembershipExists_thenReturnMembership()
     {
         // Given
         String dni = "87654321";
-        MembershipEntity expectedMembership = MembershipTestDataFactory.userRegisteredMembership();
-        MembershipResponseDTO expectedDTO = MembershipTestDataFactory.userNotRegisteredMembershipDTO();
+        MembershipEntity expectedMembership = MembershipFactory.userRegisteredMembership();
+        MembershipResponseDTO expectedDTO = MembershipFactory.userNotRegisteredMembershipDTO();
 
         // When
         when(membershipRepository.findFirstByUserDniOrderByPaymentDateDesc(dni)).thenReturn(Optional.of(expectedMembership));
@@ -314,32 +312,33 @@ public class MembershipServiceTest
         MembershipResponseDTO result = membershipService.getLastMembershipByDni(dni);
 
         // Then
+        assertEquals(expectedDTO, result);
+
         verify(membershipRepository).findFirstByUserDniOrderByPaymentDateDesc(dni);
         verify(membershipMapper).entityToDTO(expectedMembership);
-
-        assertEquals(expectedDTO, result);
     }
 
     @Test
-    void getLastMembershipByDni_WhenMembershipDoesNotExist_ThenThrowException()
+    void getLastMembershipByDni_whenMembershipDoesNotExist_thenThrowException()
     {
         // Given
         String dni = "88888888";
 
         // When
         when(membershipRepository.findFirstByUserDniOrderByPaymentDateDesc(dni)).thenReturn(Optional.empty());
-        assertThrows(MembershipNotFoundException.class, () -> membershipService.getLastMembershipByDni(dni));
 
         // Then
+        assertThrows(MembershipNotFoundException.class, () -> membershipService.getLastMembershipByDni(dni));
+
         verify(membershipRepository).findFirstByUserDniOrderByPaymentDateDesc(dni);
     }
 
     @Test
-    void getActiveMemberships_WhenActiveMembershipsExist_ThenReturnMemberships()
+    void getActiveMemberships_whenActiveMembershipsExist_thenReturnActiveMembershipsList()
     {
         // Given
-        List<MembershipEntity> expectedMemberships = MembershipTestDataFactory.activeMembershipsList();
-        List<MembershipResponseDTO> expectedDTOs = MembershipTestDataFactory.activeMembershipsListDTO();
+        List<MembershipEntity> expectedMemberships = MembershipFactory.activeMembershipsList();
+        List<MembershipResponseDTO> expectedDTOs = MembershipFactory.activeMembershipsListDTO();
 
         // When
         when(membershipRepository.findAllByStatus(MembershipStatus.ACTIVE)).thenReturn(expectedMemberships);
@@ -348,17 +347,17 @@ public class MembershipServiceTest
         List<MembershipResponseDTO> result = membershipService.getAllActive();
 
         // Then
-        verify(membershipRepository).findAllByStatus(MembershipStatus.ACTIVE);
-        verify(membershipMapper).entityToDTO(expectedMemberships);
-
         assertEquals(expectedDTOs, result);
         assertTrue(result.stream().allMatch(m ->
                 m.status().equals(MembershipStatus.ACTIVE)
         ));
+
+        verify(membershipRepository).findAllByStatus(MembershipStatus.ACTIVE);
+        verify(membershipMapper).entityToDTO(expectedMemberships);
     }
 
     @Test
-    void getActiveMemberships_WhenNoActiveMembershipsExist_ThenReturnEmptyList()
+    void getActiveMemberships_whenActiveMembershipsDoNotExist_thenReturnEmptyList()
     {
         // When
         when(membershipRepository.findAllByStatus(MembershipStatus.ACTIVE)).thenReturn(new ArrayList<>());
@@ -367,18 +366,18 @@ public class MembershipServiceTest
         List<MembershipResponseDTO> result = membershipService.getAllActive();
 
         // Then
+        assertTrue(result.isEmpty());
+
         verify(membershipRepository).findAllByStatus(MembershipStatus.ACTIVE);
         verify(membershipMapper).entityToDTO(anyList());
-
-        assertTrue(result.isEmpty());
     }
 
     @Test
-    void deactivateMemberships_WhenExpiredMembershipsExist_ThenSetStatusInactive()
+    void deactivateMemberships_whenMembershipsExist_thenDeactivateMemberships()
     {
         // Given
         LocalDate actualDate = LocalDate.now();
-        List<MembershipEntity> expectedMemberships = List.of(MembershipTestDataFactory.expiredMembership());
+        List<MembershipEntity> expectedMemberships = List.of(MembershipFactory.expiredMembership());
 
         // When
         when(membershipRepository.findAllByStatusAndNextPaymentDateBefore(MembershipStatus.ACTIVE, actualDate)).thenReturn(expectedMemberships);
@@ -389,17 +388,18 @@ public class MembershipServiceTest
         membershipService.deactivateMemberships();
 
         // Then
-        verify(membershipRepository).findAllByStatusAndNextPaymentDateBefore(MembershipStatus.ACTIVE, actualDate);
-        verify(whatsAppService).sendMembershipExpiredMessage(any(MembershipEntity.class), any(UserEntity.class));
         verify(membershipRepository).saveAll(captor.capture());
 
         assertTrue(captor.getValue().stream().allMatch(m ->
                 m.getStatus().equals(MembershipStatus.INACTIVE)
         ));
+
+        verify(membershipRepository).findAllByStatusAndNextPaymentDateBefore(MembershipStatus.ACTIVE, actualDate);
+        verify(whatsAppService).sendMembershipExpiredMessage(any(MembershipEntity.class), any(UserEntity.class));
     }
 
     @Test
-    void deactivateMemberships_WhenNoExpiredMembershipExist_ThenDoNothing()
+    void deactivateMemberships_whenMembershipsDoNotExist_thenDoNothing()
     {
         // Given
         LocalDate actualDate = LocalDate.now();
@@ -416,13 +416,13 @@ public class MembershipServiceTest
     }
 
     @Test
-    void updateMembershipStatusById_WhenMembershipExists_ThenUpdateStatus()
+    void updateMembershipStatusById_whenMembershipExists_thenReturnMembershipUpdated()
     {
         // Given
         int id = 1;
         MembershipStatusRequestDTO requestDTO = new MembershipStatusRequestDTO(MembershipStatus.INACTIVE);
-        MembershipEntity expectedMembership = MembershipTestDataFactory.userRegisteredMembership();
-        MembershipEntity expectedMembershipUpdated = MembershipTestDataFactory.userRegisteredMembership();
+        MembershipEntity expectedMembership = MembershipFactory.userRegisteredMembership();
+        MembershipEntity expectedMembershipUpdated = MembershipFactory.userRegisteredMembership();
         expectedMembershipUpdated.setStatus(MembershipStatus.INACTIVE);
 
         MembershipResponseDTO expectedMembershipUpdatedDTO = new MembershipResponseDTO(
@@ -433,7 +433,9 @@ public class MembershipServiceTest
                 expectedMembershipUpdated.getType(),
                 expectedMembershipUpdated.getPaymentMethod(),
                 expectedMembershipUpdated.getNextPaymentDate(),
-                expectedMembershipUpdated.getNextPaymentDate()
+                expectedMembershipUpdated.getNextPaymentDate(),
+                expectedMembershipUpdated.getCreatedBy(),
+                expectedMembershipUpdated.getLastModifiedBy()
         );
 
         // When
@@ -446,15 +448,16 @@ public class MembershipServiceTest
         MembershipResponseDTO result = membershipService.updateMembershipStatusById(id, requestDTO);
 
         // Then
-        verify(membershipRepository).findById(id);
         verify(membershipRepository).save(captor.capture());
 
         assertEquals(requestDTO.status(), captor.getValue().getStatus());
         assertEquals(expectedMembershipUpdatedDTO, result);
+
+        verify(membershipRepository).findById(id);
     }
 
     @Test
-    void updateMembershipStatusById_WhenMembershipDoesNotExist_ThenThrowException()
+    void updateMembershipStatusById_whenMembershipDoesNotExist_thenThrowException()
     {
         // Given
         int id = 1;
@@ -463,9 +466,9 @@ public class MembershipServiceTest
         // When
         when(membershipRepository.findById(id)).thenReturn(Optional.empty());
 
+        // Then
         assertThrows(MembershipNotFoundException.class, () -> membershipService.updateMembershipStatusById(id, requestDTO));
 
-        // Then
         verify(membershipRepository).findById(id);
         verifyNoMoreInteractions(membershipRepository);
     }
@@ -476,8 +479,8 @@ public class MembershipServiceTest
         // Given
         int id = 1;
         MembershipStatusRequestDTO requestDTO = new MembershipStatusRequestDTO(MembershipStatus.ACTIVE);
-        MembershipEntity expectedMembership = MembershipTestDataFactory.userRegisteredMembership();
-        MembershipResponseDTO expectedMembershipDTO = MembershipTestDataFactory.userRegisteredMembershipDTO();
+        MembershipEntity expectedMembership = MembershipFactory.userRegisteredMembership();
+        MembershipResponseDTO expectedMembershipDTO = MembershipFactory.userRegisteredMembershipDTO();
 
         // When
         when(membershipRepository.findById(id)).thenReturn(Optional.of(expectedMembership));
@@ -486,18 +489,18 @@ public class MembershipServiceTest
         MembershipResponseDTO result = membershipService.updateMembershipStatusById(id, requestDTO);
 
         // Then
+        assertEquals(requestDTO.status(), result.status());
+
         verify(membershipRepository).findById(id);
         verifyNoMoreInteractions(membershipRepository);
-
-        assertEquals(requestDTO.status(), result.status());
     }
 
     @Test
-    void deleteMembershipById_WhenMembershipExists_ThenDeleteMembership()
+    void deleteMembershipById_whenMembershipExists_thenDeleteMembership()
     {
         // Given
         int id = 1;
-        MembershipEntity expectedMembership = MembershipTestDataFactory.userRegisteredMembership();
+        MembershipEntity expectedMembership = MembershipFactory.userRegisteredMembership();
 
         // When
         when(membershipRepository.findById(id)).thenReturn(Optional.of(expectedMembership));
@@ -506,14 +509,15 @@ public class MembershipServiceTest
         membershipService.deleteMembershipById(id);
 
         // Then
-        verify(membershipRepository).findById(id);
         verify(membershipRepository).delete(captor.capture());
 
         assertEquals(expectedMembership, captor.getValue());
+
+        verify(membershipRepository).findById(id);
     }
 
     @Test
-    void deleteMembershipById_WhenMembershipDoesNotExist_ThenThrowException()
+    void deleteMembershipById_whenMembershipDoesNotExist_thenThrowException()
     {
         // Given
         int id = -1;
@@ -521,21 +525,21 @@ public class MembershipServiceTest
         // When
         when(membershipRepository.findById(id)).thenReturn(Optional.empty());
 
+        // Then
         assertThrows(MembershipNotFoundException.class, () -> membershipService.deleteMembershipById(id));
 
-        // Then
         verify(membershipRepository).findById(id);
         verifyNoMoreInteractions(membershipRepository);
     }
 
     @Test
-    void deleteMembershipsByDni_WhenMembershipsExistsForUser_ThenDeleteMemberships()
+    void deleteMembershipsByDni_whenMembershipsExist_thenDeleteMemberships()
     {
         // Given
         String dni = "87654321";
         List<MembershipEntity> expectedMemberships = List.of(
-                MembershipTestDataFactory.userRegisteredMembership(),
-                MembershipTestDataFactory.expiredMembership()
+                MembershipFactory.userRegisteredMembership(),
+                MembershipFactory.expiredMembership()
         );
 
         // When
@@ -545,17 +549,18 @@ public class MembershipServiceTest
         membershipService.deleteAllByDni(dni);
 
         // Then
-        verify(membershipRepository).findAllByUserDni(dni);
         verify(membershipRepository).deleteAll(captor.capture());
 
         assertEquals(expectedMemberships, captor.getValue());
         assertTrue(captor.getValue().stream().allMatch(m ->
                 m.getUserDni().equals(dni)
         ));
+
+        verify(membershipRepository).findAllByUserDni(dni);
     }
 
     @Test
-    void deleteMembershipsByDni_WhenNoMembershipsExistsForUser_ThenThrowException()
+    void deleteMembershipsByDni_whenMembershipsDoNotExist_thenThrowException()
     {
         // Given
         String dni = "99999999";
@@ -571,10 +576,10 @@ public class MembershipServiceTest
     }
 
     @Test
-    void sendExpiryReminder_WhenMembershipExpiresInOneDay_ThenSendWhatsappMessage()
+    void sendExpiryReminder_whenMembershipExpiresInOneDay_thenSendWhatsappMessage()
     {
         // Given
-        MembershipEntity membership = MembershipTestDataFactory.userRegisteredMembership();
+        MembershipEntity membership = MembershipFactory.userRegisteredMembership();
         membership.setNextPaymentDate(LocalDate.now().plusDays(1));
         List<MembershipEntity> expectedMemberships = List.of(membership);
 

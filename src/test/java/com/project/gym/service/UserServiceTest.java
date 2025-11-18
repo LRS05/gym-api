@@ -7,7 +7,7 @@ import com.project.gym.entity.UserEntity;
 import com.project.gym.exception.InvalidPasswordException;
 import com.project.gym.mapper.UserMapper;
 import com.project.gym.repository.UserRepository;
-import com.project.gym.data.UserTestDataFactory;
+import com.project.gym.data.UserFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -50,12 +50,12 @@ public class UserServiceTest
     }
 
     @Test
-    void getMe_WhenUserExists_ThenReturnUser()
+    void getMe_whenUserExists_thenReturnOwnInfo()
     {
         // Given
         String dni = "87654321";
-        UserEntity expectedUser = UserTestDataFactory.userUser();
-        UserResponseDTO expectedDTO = UserTestDataFactory.userUserDTO();
+        UserEntity expectedUser = UserFactory.userUser();
+        UserResponseDTO expectedDTO = UserFactory.userUserDTO();
 
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(dni, null, new ArrayList<>())
@@ -68,14 +68,14 @@ public class UserServiceTest
         UserResponseDTO result = userService.getMe();
 
         // Then
+        assertEquals(expectedDTO, result);
+
         verify(userRepository).findByDni(dni);
         verify(userMapper).entityToDTO(expectedUser);
-
-        assertEquals(expectedDTO, result);
     }
 
     @Test
-    void getMe_WhenUserDoesNotExist_ThenThrowException()
+    void getMe_whenUserDoesNotExist_thenThrowException()
     {
         // Given
         String dni = "99999999";
@@ -86,19 +86,19 @@ public class UserServiceTest
         // When
         when(userRepository.findByDni(dni)).thenReturn(Optional.empty());
 
+        // Then
         assertThrows(UsernameNotFoundException.class, () -> userService.getMe());
 
-        // Then
         verify(userRepository).findByDni(dni);
     }
 
     @Test
-    void deleteMe_WhenUserExistsAndPasswordIsValid_ThenDeleteUser()
+    void deleteMe_whenUserExistsAndPasswordIsCorrect_thenDeleteUser()
     {
         // Given
         String dni = "87654321";
         PasswordRequestDTO requestDTO = new PasswordRequestDTO("gordomono");
-        UserEntity expectedUser = UserTestDataFactory.userUser();
+        UserEntity expectedUser = UserFactory.userUser();
 
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(dni, null, new ArrayList<>())
@@ -111,15 +111,15 @@ public class UserServiceTest
         userService.deleteMe(requestDTO);
 
         // Then
+        assertEquals(dni, expectedUser.getDni());
+
         verify(userRepository).findByDni(dni);
         verify(passwordEncoder).matches(requestDTO.password(), expectedUser.getPassword());
         verify(userRepository).delete(expectedUser);
-
-        assertEquals(dni, expectedUser.getDni());
     }
 
     @Test
-    void deleteMe_WhenUserDoesNotExist_ThenThrowException()
+    void deleteMe_whenUserDoesNotExist_thenThrowException()
     {
         // Given
         String dni = "99999999";
@@ -140,12 +140,12 @@ public class UserServiceTest
     }
 
     @Test
-    void deleteMe_WhenPasswordIsInvalid_ThenThrowException()
+    void deleteMe_whenPasswordIsIncorrect_thenThrowException()
     {
         // Given
         String dni = "87654321";
         PasswordRequestDTO requestDTO = new PasswordRequestDTO("monogordo");
-        UserEntity expectedUser = UserTestDataFactory.userUser();
+        UserEntity expectedUser = UserFactory.userUser();
 
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(dni, null, new ArrayList<>())
@@ -162,5 +162,4 @@ public class UserServiceTest
         verify(passwordEncoder).matches(requestDTO.password(), expectedUser.getPassword());
         verifyNoMoreInteractions(userRepository);
     }
-
 }

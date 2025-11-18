@@ -1,7 +1,7 @@
 package com.project.gym.service;
 
 import com.project.gym.entity.UserEntity;
-import com.project.gym.data.UserTestDataFactory;
+import com.project.gym.data.UserFactory;
 import com.project.gym.entity.enums.TokenType;
 import com.project.gym.exception.CookieNotFoundException;
 import com.project.gym.exception.InvalidTokenException;
@@ -34,10 +34,10 @@ public class JwtServiceTest
     }
 
     @Test
-    void generateAccessTokenCookie_WhenUserIsValid_ThenReturnAccessTokenCookie()
+    void generateAccessTokenCookie_whenUserExists_thenReturnAccessTokenCookie()
     {
         // Given
-        UserEntity expectedUser = UserTestDataFactory.userAdmin();
+        UserEntity expectedUser = UserFactory.userAdmin();
 
         // When
         ResponseCookie result = jwtService.generateAccessTokenCookie(expectedUser);
@@ -47,10 +47,10 @@ public class JwtServiceTest
     }
 
     @Test
-    void generateRefreshTokenCookie_WhenUserIsValid_ThenReturnRefreshTokenCookie()
+    void generateRefreshTokenCookie_whenUserExists_thenReturnRefreshTokenCookie()
     {
         // Given
-        UserEntity expectedUser = UserTestDataFactory.userAdmin();
+        UserEntity expectedUser = UserFactory.userAdmin();
 
         // When
         ResponseCookie result = jwtService.generateRefreshTokenCookie(expectedUser);
@@ -60,10 +60,10 @@ public class JwtServiceTest
     }
 
     @Test
-    void getTokenFromCookies_WhenTokenTypeIsValid_ThenReturnToken()
+    void getTokenFromCookies_whenTokenCookieExists_thenReturnToken()
     {
         // Given
-        UserEntity user = UserTestDataFactory.userUser();
+        UserEntity user = UserFactory.userUser();
         String expectedAccessToken = jwtService.generateAccessTokenCookie(user).getValue();
 
 
@@ -76,17 +76,17 @@ public class JwtServiceTest
     }
 
     @Test
-    void getTokenFromCookies_WhenCookiesAreNull_ThenThrowException()
+    void getTokenFromCookies_whenCookiesAreNull_thenThrowException()
     {
         // When & Then
         assertThrows(CookieNotFoundException.class, () -> jwtService.getTokenFromCookies(null, TokenType.ACCESS));
     }
 
     @Test
-    void getTokenFromCookies_WhenCookieNotFound_ThenThrowException()
+    void getTokenFromCookies_whenTokenCookieDoesNotExist_thenThrowException()
     {
         // Given
-        UserEntity user = UserTestDataFactory.userUser();
+        UserEntity user = UserFactory.userUser();
         String accessToken = jwtService.generateAccessTokenCookie(user).getValue();
 
         Cookie[] cookies = {new Cookie("ACCESS_TOKEN", accessToken)};
@@ -96,10 +96,10 @@ public class JwtServiceTest
     }
 
     @Test
-    void isTokenValid_WhenTokenBelongsToSameUser_ThenReturnTrue()
+    void isTokenValid_whenTokenBelongsToSameUser_thenReturnTrue()
     {
         // Given
-        UserEntity user = UserTestDataFactory.userAdmin();
+        UserEntity user = UserFactory.userAdmin();
         String accessToken = jwtService.generateAccessTokenCookie(user).getValue();
 
         // When
@@ -110,11 +110,11 @@ public class JwtServiceTest
     }
 
     @Test
-    void isTokenValid_WhenTokenBelongsToDifferentUser_ThenReturnFalse()
+    void isTokenValid_whenTokenBelongsToDifferentUser_thenReturnFalse()
     {
         // Given
-        UserEntity user = UserTestDataFactory.userUser();
-        UserEntity userAdmin = UserTestDataFactory.userAdmin();
+        UserEntity user = UserFactory.userUser();
+        UserEntity userAdmin = UserFactory.userAdmin();
         String accessToken = jwtService.generateAccessTokenCookie(user).getValue();
 
         // When
@@ -125,7 +125,7 @@ public class JwtServiceTest
     }
 
     @Test
-    void isTokenValid_WhenTokenIsExpired_ThenReturnFalse()
+    void isTokenValid_whenTokenIsExpired_thenReturnFalse()
     {
         // Given
         jwtService = new JwtService(
@@ -133,7 +133,7 @@ public class JwtServiceTest
                 -1,
                 -1
         );
-        UserEntity user = UserTestDataFactory.userUser();
+        UserEntity user = UserFactory.userUser();
         String accessToken = jwtService.generateAccessTokenCookie(user).getValue();
 
         // When
@@ -144,10 +144,10 @@ public class JwtServiceTest
     }
 
     @Test
-    void getSubject_WhenTokenIsValid_ThenReturnExpectedDni()
+    void getSubject_whenTokenIsValid_thenReturnDni()
     {
         // Given
-        UserEntity user = UserTestDataFactory.userUser();
+        UserEntity user = UserFactory.userUser();
         String expectedDni = "87654321";
         String accessToken = jwtService.generateAccessTokenCookie(user).getValue();
 
@@ -159,7 +159,7 @@ public class JwtServiceTest
     }
 
     @Test
-    void getSubject_WhenTokenIsMalformed_ThenThrowException()
+    void getSubject_whenTokenIsInvalid_thenThrowException()
     {
         // Given
         String malformedToken = "malformedToken";
@@ -169,7 +169,7 @@ public class JwtServiceTest
     }
 
     @Test
-    void getSubject_WhenTokenIsExpired_ThenThrowException()
+    void getSubject_whenTokenIsExpired_thenThrowException()
     {
         // Given
         jwtService = new JwtService(
@@ -177,7 +177,7 @@ public class JwtServiceTest
                 -1,
                 -1
         );
-        UserEntity user = UserTestDataFactory.userUser();
+        UserEntity user = UserFactory.userUser();
         String accessToken = jwtService.generateAccessTokenCookie(user).getValue();
 
         // When & Then
@@ -185,7 +185,7 @@ public class JwtServiceTest
     }
 
     @Test
-    void emptyCookie_WhenNameIsProvided_ThenReturnEmptyCookie()
+    void emptyCookie_whenCookieExists_thenReturnEmptyCookie()
     {
         // Given
         String cookieName = "access_token";

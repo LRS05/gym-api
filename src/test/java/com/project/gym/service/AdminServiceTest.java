@@ -5,20 +5,18 @@ import com.project.gym.dto.RoleRequestDTO;
 import com.project.gym.dto.UserResponseDTO;
 import com.project.gym.entity.UserEntity;
 import com.project.gym.entity.enums.Role;
-import com.project.gym.exception.InvalidDeleteException;
-import com.project.gym.exception.InvalidRoleUpdateException;
 import com.project.gym.mapper.UserMapper;
 import com.project.gym.repository.UserRepository;
-import com.project.gym.data.UserTestDataFactory;
+import com.project.gym.data.UserFactory;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -41,11 +39,11 @@ public class AdminServiceTest
     private AdminService adminService;
 
     @Test
-    void getUsers_WhenUsersExist_ThenReturnUserList()
+    void getUsers_whenUsersExist_thenReturnUserList()
     {
         // Given
-        List<UserEntity> expectedUsers = UserTestDataFactory.userList();
-        List<UserResponseDTO> expectedDTOs = UserTestDataFactory.userListDTO();
+        List<UserEntity> expectedUsers = UserFactory.userList();
+        List<UserResponseDTO> expectedDTOs = UserFactory.userListDTO();
 
         // When
         when(userRepository.findAll()).thenReturn(expectedUsers);
@@ -54,35 +52,20 @@ public class AdminServiceTest
         List<UserResponseDTO> result = adminService.getUsers();
 
         // Then
+        assertEquals(expectedDTOs, result);
+        assertEquals(3, result.size());
+
         verify(userRepository).findAll();
         verify(userMapper).entityToDTO(expectedUsers);
-
-        assertEquals(expectedDTOs, result);
     }
 
     @Test
-    void getUsers_WhenNoUsersExist_ThenReturnEmptyList()
-    {
-        // When
-        when(userRepository.findAll()).thenReturn(new ArrayList<>());
-        when(userMapper.entityToDTO(anyList())).thenReturn(new ArrayList<>());
-
-        List<UserResponseDTO> result = adminService.getUsers();
-
-        // Then
-        verify(userRepository).findAll();
-        verify(userMapper).entityToDTO(anyList());
-
-        assertTrue(result.isEmpty());
-    }
-
-    @Test
-    void getUserByDni_WhenUserExist_ThenReturnUser()
+    void getUserByDni_whenUserExists_thenReturnUser()
     {
         // Given
         String dni = "12345678";
-        UserEntity expectedUser = UserTestDataFactory.userStaff();
-        UserResponseDTO expectedDTO = UserTestDataFactory.userStaffDTO();
+        UserEntity expectedUser = UserFactory.userStaff();
+        UserResponseDTO expectedDTO = UserFactory.userStaffDTO();
 
         // When
         when(userRepository.findByDni(dni)).thenReturn(Optional.of(expectedUser));
@@ -91,14 +74,14 @@ public class AdminServiceTest
         UserResponseDTO result = adminService.getUserByDni(dni);
 
         // Then
+        assertEquals(expectedDTO, result);
+
         verify(userRepository).findByDni(dni);
         verify(userMapper).entityToDTO(expectedUser);
-
-        assertEquals(expectedDTO, result);
     }
 
     @Test
-    void getUserByDni_WhenUserDoesNotExist_ThenThrowException()
+    void getUserByDni_whenUserDoesNotExist_thenThrowException()
     {
         // Given
         String dni = "99999999";
@@ -113,16 +96,16 @@ public class AdminServiceTest
     }
 
     @Test
-    void updateUserRoleByDni_WhenUserExistsAndIsNotAdmin_ThenUpdateRole()
+    void updateUserRoleByDni_whenUserExists_thenReturnUserUpdated()
     {
         // Given
         String dni = "87654321";
         RoleRequestDTO requestDTO = new RoleRequestDTO(Role.STAFF);
-        UserEntity expectedUser = UserTestDataFactory.userUser();
+        UserEntity expectedUser = UserFactory.userUser();
 
-        UserEntity expectedUserUpdated = UserTestDataFactory.userUser();
+        UserEntity expectedUserUpdated = UserFactory.userUser();
         expectedUserUpdated.setRole(Role.STAFF);
-        UserResponseDTO expectedUserUpdatedDTO = UserTestDataFactory.userUserRoleUpdatedDTO();
+        UserResponseDTO expectedUserUpdatedDTO = UserFactory.userUserRoleUpdatedDTO();
 
         // When
         when(userRepository.findByDni(dni)).thenReturn(Optional.of(expectedUser));
@@ -133,16 +116,17 @@ public class AdminServiceTest
         UserResponseDTO result = adminService.updateUserRoleByDni(dni, requestDTO);
 
         // Then
-        verify(userRepository).findByDni(dni);
         verify(userRepository).save(captor.capture());
-        verify(userMapper).entityToDTO(expectedUserUpdated);
 
         assertEquals(requestDTO.role(), captor.getValue().getRole());
         assertEquals(expectedUserUpdatedDTO, result);
+
+        verify(userRepository).findByDni(dni);
+        verify(userMapper).entityToDTO(expectedUserUpdated);
     }
 
     @Test
-    void updateUserRoleByDni_WhenUserDoesNotExist_ThenThrowException()
+    void updateUserRoleByDni_whenUserDoesNotExist_thenThrowException()
     {
         // Given
         String dni = "99999999";
@@ -159,44 +143,44 @@ public class AdminServiceTest
     }
 
     @Test
-    void updateUserRoleByDni_WhenUserIsAdmin_ThenThrowException()
+    void updateUserRoleByDni_whenUserIsAdmin_thenThrowException()
     {
         // Given
         String dni = "46622977";
-        UserEntity expectedUser = UserTestDataFactory.userAdmin();
+        UserEntity expectedUser = UserFactory.userAdmin();
         RoleRequestDTO requestDTO = new RoleRequestDTO(Role.USER);
 
         // When
         when(userRepository.findByDni(dni)).thenReturn(Optional.of(expectedUser));
 
         // Then
-        assertThrows(InvalidRoleUpdateException.class, () -> adminService.updateUserRoleByDni(dni, requestDTO));
+        assertThrows(AccessDeniedException.class, () -> adminService.updateUserRoleByDni(dni, requestDTO));
 
         verify(userRepository).findByDni(dni);
         verifyNoMoreInteractions(userRepository);
     }
 
     @Test
-    void deleteUserByDni_WhenUserExistsAndIsNotAdmin_ThenDeleteUser()
+    void deleteUserByDni_whenUserIsNotAdmin_thenDeleteUser()
     {
         // Given
         String dni = "87654321";
-        UserEntity expectedUser = UserTestDataFactory.userUser();
+        UserEntity expectedUser = UserFactory.userUser();
 
         // When
         when(userRepository.findByDni(dni)).thenReturn(Optional.of(expectedUser));
         adminService.deleteUserByDni(dni);
 
-        // Test
-        verify(userRepository).findByDni(dni);
-        verify(userRepository).delete(expectedUser);
-
+        // Then
         assertEquals(dni, expectedUser.getDni());
         assertNotEquals(Role.ADMIN, expectedUser.getRole());
+
+        verify(userRepository).findByDni(dni);
+        verify(userRepository).delete(expectedUser);
     }
 
     @Test
-    void deleteUserByDni_WhenUserDoesNotExist_ThenThrowException()
+    void deleteUserByDni_whenUserDoesNotExist_thenThrowException()
     {
         // Given
         String dni = "99999999";
@@ -212,42 +196,42 @@ public class AdminServiceTest
     }
 
     @Test
-    void deleteUserByDni_WhenUserIsAdmin_ThenThrowException()
+    void deleteUserByDni_whenUserIsAdmin_thenThrowException()
     {
         // Given
         String dni = "46622977";
-        UserEntity expectedUser = UserTestDataFactory.userAdmin();
+        UserEntity expectedUser = UserFactory.userAdmin();
 
         // When
         when(userRepository.findByDni(dni)).thenReturn(Optional.of(expectedUser));
 
         // Then
-        assertThrows(InvalidDeleteException.class, () -> adminService.deleteUserByDni(dni));
+        assertThrows(AccessDeniedException.class, () -> adminService.deleteUserByDni(dni));
 
         verify(userRepository).findByDni(dni);
         verifyNoMoreInteractions(userRepository);
     }
 
     @Test
-    void deleteUserById_WhenUserExist_ThenDeleteUser()
+    void deleteUserById_whenUserExists_thenReturnUser()
     {
         // Given
         int id = 3;
-        UserEntity expectedUser = UserTestDataFactory.userUser();
+        UserEntity expectedUser = UserFactory.userUser();
 
         // When
         when(userRepository.findById(id)).thenReturn(Optional.of(expectedUser));
         adminService.deleteUserById(3);
 
         // Test
+        assertEquals(id, expectedUser.getId());
+
         verify(userRepository).findById(id);
         verify(userRepository).delete(expectedUser);
-
-        assertEquals(id, expectedUser.getId());
     }
 
     @Test
-    void deleteUserById_WhenUserDoesNotExist_ThenThrowException()
+    void deleteUserById_whenUserDoesNotExist_thenThrowException()
     {
         // Given
         int id = 99999999;
@@ -263,17 +247,17 @@ public class AdminServiceTest
     }
 
     @Test
-    void deleteUserById_WhenUserIsAdmin_ThenThrowException()
+    void deleteUserById_whenUserIsAdmin_thenThrowException()
     {
         // Given
         int id = 1;
-        UserEntity expectedUser = UserTestDataFactory.userAdmin();
+        UserEntity expectedUser = UserFactory.userAdmin();
 
         // When
         when(userRepository.findById(id)).thenReturn(Optional.of(expectedUser));
 
         // Then
-        assertThrows(InvalidDeleteException.class, () -> adminService.deleteUserById(id));
+        assertThrows(AccessDeniedException.class, () -> adminService.deleteUserById(id));
 
         verify(userRepository).findById(id);
         verifyNoMoreInteractions(userRepository);

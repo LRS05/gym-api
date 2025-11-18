@@ -17,7 +17,6 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -26,7 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 @AutoConfigureMockMvc
 @Transactional
-public class UserControllerIntegrationTest
+public class UserControllerTest
 {
     @Autowired
     private MockMvc mockMvc;
@@ -36,7 +35,7 @@ public class UserControllerIntegrationTest
 
     @Test
     @WithMockUser(roles = "USER", username = "87654321")
-    void getMe_WhenUserAuthenticated_ThenReturnOkWithUserInfo() throws Exception
+    void getMe_whenUserIsAuthenticated_thenReturnOwnInfo() throws Exception
     {
         mockMvc.perform(get("/api/v1/user"))
                 .andExpect(status().isOk())
@@ -46,7 +45,7 @@ public class UserControllerIntegrationTest
 
     @Test
     @WithMockUser(roles = "USER", username = "99999999")
-    void getMe_WhenUserDoesNotExist_ThenReturnNotFound() throws Exception
+    void getMe_whenUserDoesNotExist_thenThrowNotFound() throws Exception
     {
         mockMvc.perform(get("/api/v1/user"))
                 .andExpect(status().isNotFound());
@@ -54,9 +53,9 @@ public class UserControllerIntegrationTest
 
     @Test
     @WithMockUser(roles = "USER", username = "87654321")
-    void deleteMe_WhenValidPassword_ThenReturnOkWithMessage() throws Exception
+    void deleteMe_whenPasswordIsValid_thenDeleteUser() throws Exception
     {
-        PasswordRequestDTO requestDTO = new PasswordRequestDTO("gordomono");
+        PasswordRequestDTO requestDTO = new PasswordRequestDTO("Gordomono8!");
 
         mockMvc.perform(delete("/api/v1/user")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -67,7 +66,7 @@ public class UserControllerIntegrationTest
 
     @Test
     @WithMockUser(roles = "USER", username = "87654321")
-    void deleteMe_WhenInvalidPassword_ThenReturnBadRequest() throws Exception
+    void deleteMe_whenPasswordIsInvalid_thenThrowBadRequest() throws Exception
     {
         PasswordRequestDTO requestDTO = new PasswordRequestDTO("ABC123");
 
@@ -79,36 +78,24 @@ public class UserControllerIntegrationTest
 
     @Test
     @WithMockUser(roles = "USER", username = "87654321")
-    void deleteMe_WithNoPassword_ThenReturnBadRequest() throws Exception
+    void deleteMe_whenPasswordIsEmpty_thenThrowBadRequest() throws Exception
     {
-        PasswordRequestDTO requestDTO = new PasswordRequestDTO(null);
-
         mockMvc.perform(delete("/api/v1/user")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(requestDTO)))
+                        .content(""))
                 .andExpect(status().isBadRequest());
     }
 
-
-
-    /*
-
-           Membership Controllers Tests
-
-     */
-
-
-
     @Test
     @WithMockUser(roles = "USER", username = "87654321")
-    void createMembershipByDni_WhenValidRequest_ThenReturnOkWithMembership() throws Exception
+    void createMembershipByDni_whenDTOIsValid_thenCreateMembership() throws Exception
     {
         MembershipRequestDTO requestDTO = new MembershipRequestDTO(
                 MembershipType.ANNUALLY,
                 PaymentMethod.CARD
         );
 
-        mockMvc.perform(post("/api/v1/user/membership")
+        mockMvc.perform(post("/api/v1/user/memberships")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDTO)))
                 .andExpect(status().isCreated())
@@ -120,19 +107,19 @@ public class UserControllerIntegrationTest
 
     @Test
     @WithMockUser(roles = "USER", username = "87654321")
-    void createMembershipByDni_WhenInvalidDTO_ThenReturnBadRequest() throws Exception
+    void createMembershipByDni_whenDTOIsInvalid_thenThrowBadRequest() throws Exception
     {
-        MembershipRequestDTO requestDTO = new MembershipRequestDTO(null, null);
+        String invalidDTO = "invalid-dto";
 
-        mockMvc.perform(post("/api/v1/user/membership")
+        mockMvc.perform(post("/api/v1/user/memberships")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(requestDTO)))
+                        .content(invalidDTO))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     @WithMockUser(roles = "USER", username = "87654321")
-    void getMembershipsByDni_WhenUserHasMemberships_ThenReturnOkWithList() throws Exception
+    void getMembershipsByDni_whenMembershipsExist_thenReturnMembershipList() throws Exception
     {
         mockMvc.perform(get("/api/v1/user/memberships"))
                 .andExpect(status().isOk())
@@ -143,70 +130,57 @@ public class UserControllerIntegrationTest
 
     @Test
     @WithMockUser(roles = "USER", username = "11111111")
-    void getMembershipsByDni_WhenUserHasNoMemberships_ThenReturnEmptyList() throws Exception
+    void getMembershipsByDni_whenMembershipsDoNotExist_thenThrowNotFound() throws Exception
     {
         mockMvc.perform(get("/api/v1/user/memberships"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(0));
+                .andExpect(status().isNotFound())
+                .andExpect(content().string("Memberships not found."));
     }
-
 
     @Test
     @WithMockUser(roles = "USER", username = "87654321")
-    void getLastMembershipByDni_WhenMembershipExists_ThenReturnOkWithMembership() throws Exception
+    void getLastMembershipByDni_whenMembershipExists_thenReturnMembership() throws Exception
     {
-        mockMvc.perform(get("/api/v1/user/membership/last"))
+        mockMvc.perform(get("/api/v1/user/memberships/last"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.user_dni").value("87654321"))
-                .andExpect(jsonPath("$.type").value("ANNUALLY"))
-                .andExpect(jsonPath("$.payment_method").value("CARD"));
+                .andExpect(jsonPath("$.payment_date").value("2025-01-01"));
     }
 
     @Test
     @WithMockUser(roles = "USER", username = "88888888")
-    void getLastMembershipByDni_WhenMembershipDoesNotExist_ThenReturnNotFound() throws Exception
+    void getLastMembershipByDni_whenMembershipDoesNotExist_thenThrowNotFound() throws Exception
     {
-        mockMvc.perform(get("/api/v1/user/membership/last"))
+        mockMvc.perform(get("/api/v1/user/memberships/last"))
                 .andExpect(status().isNotFound());
     }
 
-
-
-        /*
-
-       Unauthorized and Forbidden Tests
-
-     */
-
-
-
     @ParameterizedTest
     @CsvSource({
             "/api/v1/user, GET",
             "/api/v1/user, DELETE",
-            "/api/v1/user/membership, POST",
-            "/api/v1/user/membership/last, GET",
-            "/api/v1/user/memberships, GET",
-    })
-    void accessUserUrls_WhenUserIsNotAuthenticated_ThenReturnUnauthorized(String url, HttpMethod method) throws Exception
-    {
-        mockMvc.perform(MockMvcRequestBuilders.request(method, url))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @ParameterizedTest
-    @CsvSource({
-            "/api/v1/user, GET",
-            "/api/v1/user, DELETE",
-            "/api/v1/user/membership, POST",
-            "/api/v1/user/membership/last, GET",
+            "/api/v1/user/memberships, POST",
+            "/api/v1/user/memberships/last, GET",
             "/api/v1/user/memberships, GET",
     })
     @WithMockUser(roles = "ADMIN", username = "46622977")
-    void accessUserUrls_WhenUserDoesNotHaveUserfRole_ThenReturnForbidden(String url, HttpMethod method) throws Exception
+    void accessUserUrls_whenUserIsNotUser_thenThrowForbidden(String url, HttpMethod method) throws Exception
     {
-        mockMvc.perform(MockMvcRequestBuilders.request(method, url))
+        mockMvc.perform(request(method, url))
                 .andExpect(status().isForbidden());
     }
 
+    @ParameterizedTest
+    @CsvSource({
+            "/api/v1/user, GET",
+            "/api/v1/user, DELETE",
+            "/api/v1/user/memberships, POST",
+            "/api/v1/user/memberships/last, GET",
+            "/api/v1/user/memberships, GET",
+    })
+    void accessUserUrls_whenUserIsNotAuthenticated_thenThrowUnauthorized(String url, HttpMethod method) throws Exception
+    {
+        mockMvc.perform(request(method, url))
+                .andExpect(status().isUnauthorized());
+    }
 }
