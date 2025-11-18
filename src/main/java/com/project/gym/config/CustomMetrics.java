@@ -9,13 +9,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class CustomMetrics
 {
     private final AtomicInteger totalUsers = new AtomicInteger(0);
-    private final AtomicInteger totalMemberships = new AtomicInteger(0);
     private final AtomicInteger activeMemberships = new AtomicInteger(0);
 
     public CustomMetrics(MeterRegistry meterRegistry)
     {
         meterRegistry.gauge("gym.total.users", totalUsers);
-        meterRegistry.gauge("gym.total.memberships", totalMemberships);
         meterRegistry.gauge("gym.active.memberships", activeMemberships);
     }
 
@@ -37,15 +35,5 @@ public class CustomMetrics
     public void decrementActiveMemberships()
     {
         activeMemberships.decrementAndGet();
-    }
-
-    public void incrementMemberships()
-    {
-        totalMemberships.incrementAndGet();
-    }
-
-    public void decrementMemberships()
-    {
-        totalMemberships.decrementAndGet();
     }
 }
