@@ -7,8 +7,8 @@ import jakarta.validation.constraints.Pattern;
 public record PhoneNumberRequestDTO(
 
         @JsonProperty("phone_number")
-        @NotBlank(message = "Phone number is required")
-        @Pattern(regexp = "^\\d{10,14}$", message = "Invalid phone number, Only digits are allowd, without spaces or special characters, and do not include the country code.")
+        @NotBlank(message = "Phone number is required.")
+        @Pattern(regexp = "^\\d{10,14}$", message = "Invalid phone number, Only digits are allowed, without spaces or special characters, and do not include the country code.")
         String phoneNumber
 ) {
 }
