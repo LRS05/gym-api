@@ -7,10 +7,10 @@ import jakarta.validation.constraints.NotNull;
 
 public record MembershipRequestDTO(
 
-        @NotNull
+        @NotNull(message = "Membership type is required.")
         MembershipType type,
 
-        @NotNull
+        @NotNull(message = "Payment method is required.")
         @JsonProperty("payment_method")
         PaymentMethod paymentMethod
 ) {
