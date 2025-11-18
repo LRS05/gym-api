@@ -10,6 +10,7 @@ import com.project.gym.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -38,14 +39,14 @@ public class StaffController
         return ResponseEntity.ok(staffService.getUsers());
     }
 
-    @GetMapping("/user/dni/{dni}")
+    @GetMapping("/users/dni/{dni}")
     public ResponseEntity<UserResponseDTO> getUserByDni(@PathVariable String dni)
     {
         log.debug("Attempting to read user with dni={}", dni);
         return ResponseEntity.ok(staffService.getUserByDni(dni));
     }
 
-    @GetMapping("/user/{id}")
+    @GetMapping("/users/{id}")
     public ResponseEntity<UserResponseDTO> getUserById(@PathVariable int id)
     {
         log.debug("Attempting to read user with id={}", id);
@@ -62,44 +63,44 @@ public class StaffController
 
 
 
-    @PostMapping("/membership/dni/{dni}")
+    @PostMapping("/users/dni/{dni}/memberships")
     public ResponseEntity<MembershipResponseDTO> createMembership(@PathVariable String dni, @Valid @RequestBody MembershipRequestDTO requestDTO)
     {
         log.info("Attempting to create a membership for the user with dni={}, type={}, payment method={}", dni, requestDTO.type(), requestDTO.paymentMethod());
-        return ResponseEntity.ok(membershipService.createMembershipByDni(dni, requestDTO));
+        return ResponseEntity.status(HttpStatus.CREATED).body(membershipService.createMembershipByDni(dni, requestDTO));
     }
 
-    @GetMapping("/membership/{id}")
+    @GetMapping("/users/memberships/{id}")
     public ResponseEntity<MembershipResponseDTO> getMembershipById(@PathVariable int id)
     {
         return ResponseEntity.ok(membershipService.getMembershipById(id));
     }
 
-    @GetMapping("/memberships/date")
+    @GetMapping("/users/memberships/date")
     public ResponseEntity<List<MembershipResponseDTO>> getMembershipsByDate(@RequestParam LocalDate start, @RequestParam LocalDate end)
     {
         return ResponseEntity.ok(membershipService.getAllByDate(start, end));
     }
 
-    @GetMapping("/memberships/dni/{dni}")
+    @GetMapping("/users/dni/{dni}/memberships")
     public ResponseEntity<List<MembershipResponseDTO>> getMembershipsByDni(@PathVariable String dni)
     {
         return ResponseEntity.ok(membershipService.getAllByDni(dni));
     }
 
-    @GetMapping("/membership/dni/{dni}/last")
+    @GetMapping("/users/dni/{dni}/memberships/last")
     public ResponseEntity<MembershipResponseDTO> getLastMembershipByDni(@PathVariable String dni)
     {
         return ResponseEntity.ok(membershipService.getLastMembershipByDni(dni));
     }
 
-    @GetMapping("/memberships/active")
+    @GetMapping("/users/memberships/active")
     public ResponseEntity<List<MembershipResponseDTO>> getActiveMemberships()
     {
         return ResponseEntity.ok(membershipService.getAllActive());
     }
 
-    @PatchMapping("/membership/{id}/status")
+    @PatchMapping("/users/memberships/{id}/status")
     public ResponseEntity<MembershipResponseDTO> updateMembershipStatusById(@PathVariable int id, @Valid @RequestBody MembershipStatusRequestDTO requestDTO)
     {
         log.info("Attempting to update membership with id={} to {}", id, requestDTO.status());

@@ -51,7 +51,7 @@ public class UserController
      */
 
 
-    @PostMapping("/membership")
+    @PostMapping("/memberships")
     public ResponseEntity<MembershipResponseDTO> createMembership(Principal principal, @Valid @RequestBody MembershipRequestDTO requestDTO)
     {
         log.debug("Attempting to create own membership with dni={}, type={}, payment method={}", principal.getName(), requestDTO.type(), requestDTO.paymentMethod());
@@ -64,7 +64,7 @@ public class UserController
         return ResponseEntity.ok(membershipService.getAllByDni(principal.getName()));
     }
 
-    @GetMapping("/membership/last")
+    @GetMapping("/memberships/last")
     public ResponseEntity<MembershipResponseDTO> getLastMembership(Principal principal)
     {
         return ResponseEntity.ok(membershipService.getLastMembershipByDni(principal.getName()));
