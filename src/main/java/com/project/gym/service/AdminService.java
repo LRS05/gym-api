@@ -5,12 +5,11 @@ import com.project.gym.dto.RoleRequestDTO;
 import com.project.gym.dto.UserResponseDTO;
 import com.project.gym.entity.UserEntity;
 import com.project.gym.entity.enums.Role;
-import com.project.gym.exception.InvalidDeleteException;
-import com.project.gym.exception.InvalidRoleUpdateException;
 import com.project.gym.mapper.UserMapper;
 import com.project.gym.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
@@ -42,10 +41,8 @@ public class AdminService
     public UserResponseDTO updateUserRoleByDni(String dni, RoleRequestDTO requestDTO)
     {
         UserEntity user = findUserByDniOrThrow(dni);
-        if (user.getRole() == Role.ADMIN)
-        {
-            throw new InvalidRoleUpdateException("You cannot update other admins.");
-        }
+
+        ensureNotAdmin(user);
 
         user.setRole(requestDTO.role());
         UserEntity savedUser = userRepository.save(user);
@@ -58,7 +55,7 @@ public class AdminService
     {
         UserEntity user = findUserByDniOrThrow(dni);
 
-        validateUserNotAdminOrThrow(user);
+        ensureNotAdmin(user);
 
         userRepository.delete(user);
         customMetrics.decrementUsers();
@@ -71,7 +68,7 @@ public class AdminService
         UserEntity user = userRepository.findById(id)
                         .orElseThrow(() -> new UsernameNotFoundException("User not found."));
 
-        validateUserNotAdminOrThrow(user);
+        ensureNotAdmin(user);
 
         userRepository.delete(user);
         customMetrics.decrementUsers();
@@ -85,11 +82,11 @@ public class AdminService
                 .orElseThrow(() -> new UsernameNotFoundException("User not found."));
     }
 
-    private void validateUserNotAdminOrThrow(UserEntity user)
+    private void ensureNotAdmin(UserEntity user)
     {
         if (user.getRole() == Role.ADMIN)
         {
-            throw new InvalidDeleteException("You cannot delete an ADMIN.");
+            throw new AccessDeniedException("You cannot perform this action on an ADMIN user.");
         }
     }
 }
