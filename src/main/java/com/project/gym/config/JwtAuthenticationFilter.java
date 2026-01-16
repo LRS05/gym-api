@@ -6,13 +6,13 @@ import com.project.gym.exception.CookieNotFoundException;
 import com.project.gym.exception.InvalidTokenException;
 import com.project.gym.repository.UserRepository;
 import com.project.gym.service.JwtService;
-import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -63,24 +63,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter
              */
             authenticateRequest(request);
         }
-        catch (CookieNotFoundException e)
+        catch (CookieNotFoundException | UsernameNotFoundException | InvalidTokenException e)
         {
-            sendErrorMessage(response, HttpServletResponse.SC_UNAUTHORIZED, "Access token cookie not found.");
+            sendErrorMessage(response, HttpStatus.UNAUTHORIZED, e.getMessage());
             return;
         }
-        catch (UsernameNotFoundException e)
-        {
-            sendErrorMessage(response, HttpServletResponse.SC_UNAUTHORIZED, "User of the token not found.");
-            return;
-        }
-        catch (JwtException e)
-        {
-            sendErrorMessage(response, HttpServletResponse.SC_UNAUTHORIZED, e.getMessage());
-            return;
-        }
-
         filterChain.doFilter(request, response);
     }
+
 
     private boolean isAuthenticated()
     {
@@ -118,9 +108,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter
         SecurityContextHolder.getContext().setAuthentication(authenticationToken);
     }
 
-    private void sendErrorMessage(HttpServletResponse response, int status, String message) throws IOException
+    private void sendErrorMessage(HttpServletResponse response, HttpStatus status, String message) throws IOException
     {
-        response.setStatus(status);
+        response.setStatus(status.value());
         response.setContentType("application/json");
         response.getWriter().write("{\"error\": \"" + message + "\"}");
     }
