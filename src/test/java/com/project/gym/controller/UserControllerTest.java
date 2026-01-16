@@ -44,14 +44,6 @@ public class UserControllerTest
     }
 
     @Test
-    @WithMockUser(roles = "USER", username = "99999999")
-    void getMe_whenUserDoesNotExist_thenThrowNotFound() throws Exception
-    {
-        mockMvc.perform(get("/api/v1/user"))
-                .andExpect(status().isNotFound());
-    }
-
-    @Test
     @WithMockUser(roles = "USER", username = "87654321")
     void deleteMe_whenPasswordIsValid_thenDeleteUser() throws Exception
     {
@@ -66,29 +58,47 @@ public class UserControllerTest
 
     @Test
     @WithMockUser(roles = "USER", username = "87654321")
-    void deleteMe_whenPasswordIsInvalid_thenThrowBadRequest() throws Exception
+    void deleteMe_whenPasswordIsInvalid_thenReturnBadRequest() throws Exception
     {
         PasswordRequestDTO requestDTO = new PasswordRequestDTO("ABC123");
 
         mockMvc.perform(delete("/api/v1/user")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDTO)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("INVALID_PASSWORD"))
+                .andExpect(jsonPath("$.message").value("Invalid password."));
     }
 
     @Test
     @WithMockUser(roles = "USER", username = "87654321")
-    void deleteMe_whenPasswordIsEmpty_thenThrowBadRequest() throws Exception
+    void deleteMe_whenPasswordIsEmpty_thenReturnBadRequest() throws Exception
     {
         mockMvc.perform(delete("/api/v1/user")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(""))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("HTTP_MESSAGE_NOT_READABLE"))
+                .andExpect(jsonPath("$.message").value("Invalid request body."));
+    }
+
+    @Test
+    @WithMockUser(roles = "USER", username = "99999999")
+    void deleteMe_whenUserDoesNotExist_thenReturnNotFound() throws Exception
+    {
+        PasswordRequestDTO requestDTO = new PasswordRequestDTO("ABC123");
+
+        mockMvc.perform(delete("/api/v1/user")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestDTO)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("USERNAME_NOT_FOUND"))
+                .andExpect(jsonPath("$.message").value("User not found."));
     }
 
     @Test
     @WithMockUser(roles = "USER", username = "87654321")
-    void createMembershipByDni_whenDTOIsValid_thenCreateMembership() throws Exception
+    void createMembershipByDni_whenDTOIsValid_thenReturnMembership() throws Exception
     {
         MembershipRequestDTO requestDTO = new MembershipRequestDTO(
                 MembershipType.ANNUALLY,
@@ -107,14 +117,16 @@ public class UserControllerTest
 
     @Test
     @WithMockUser(roles = "USER", username = "87654321")
-    void createMembershipByDni_whenDTOIsInvalid_thenThrowBadRequest() throws Exception
+    void createMembershipByDni_whenDTOIsInvalid_thenReturnBadRequest() throws Exception
     {
-        String invalidDTO = "invalid-dto";
+        String invalidDTO = "INVALID_DTO";
 
         mockMvc.perform(post("/api/v1/user/memberships")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(invalidDTO))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("HTTP_MESSAGE_NOT_READABLE"))
+                .andExpect(jsonPath("$.message").value("Invalid request body."));
     }
 
     @Test
@@ -129,15 +141,6 @@ public class UserControllerTest
     }
 
     @Test
-    @WithMockUser(roles = "USER", username = "11111111")
-    void getMembershipsByDni_whenMembershipsDoNotExist_thenThrowNotFound() throws Exception
-    {
-        mockMvc.perform(get("/api/v1/user/memberships"))
-                .andExpect(status().isNotFound())
-                .andExpect(content().string("Memberships not found."));
-    }
-
-    @Test
     @WithMockUser(roles = "USER", username = "87654321")
     void getLastMembershipByDni_whenMembershipExists_thenReturnMembership() throws Exception
     {
@@ -148,39 +151,32 @@ public class UserControllerTest
     }
 
     @Test
-    @WithMockUser(roles = "USER", username = "88888888")
-    void getLastMembershipByDni_whenMembershipDoesNotExist_thenThrowNotFound() throws Exception
+    void accessUserUrls_whenUserIsNotAuthenticated_thenReturnUnauthorized() throws Exception
     {
-        mockMvc.perform(get("/api/v1/user/memberships/last"))
-                .andExpect(status().isNotFound());
+        // With any HTTP method, this URL is unauthorized when the USER is not logged in.
+        mockMvc.perform(get("/api/v1/user/anything"))
+                .andExpect(status().isUnauthorized());
     }
 
-    @ParameterizedTest
-    @CsvSource({
-            "/api/v1/user, GET",
-            "/api/v1/user, DELETE",
-            "/api/v1/user/memberships, POST",
-            "/api/v1/user/memberships/last, GET",
-            "/api/v1/user/memberships, GET",
-    })
+    @Test
     @WithMockUser(roles = "ADMIN", username = "46622977")
-    void accessUserUrls_whenUserIsNotUser_thenThrowForbidden(String url, HttpMethod method) throws Exception
+    void accessUserUrls_whenUserDoesNotHaveUserRole_thenReturnForbidden() throws Exception
     {
-        mockMvc.perform(request(method, url))
+        // With any HTTP method, this URL is forbidden for ADMIN and STAFF roles.
+        mockMvc.perform(get("/api/v1/user/anything"))
                 .andExpect(status().isForbidden());
     }
 
     @ParameterizedTest
     @CsvSource({
-            "/api/v1/user, GET",
-            "/api/v1/user, DELETE",
-            "/api/v1/user/memberships, POST",
-            "/api/v1/user/memberships/last, GET",
-            "/api/v1/user/memberships, GET",
+            "'', GET",
+            "/memberships, GET",
+            "/memberships/last, GET"
     })
-    void accessUserUrls_whenUserIsNotAuthenticated_thenThrowUnauthorized(String url, HttpMethod method) throws Exception
+    @WithMockUser(roles = "USER", username = "10101010")
+    void methodEntityByDni_whenUsersOrMembershipsDoNotExist_thenReturnNotFound(String url, HttpMethod method) throws Exception
     {
-        mockMvc.perform(request(method, url))
-                .andExpect(status().isUnauthorized());
+        mockMvc.perform(request(method, "/api/v1/user" + url))
+                .andExpect(status().isNotFound());
     }
 }

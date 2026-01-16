@@ -25,6 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @Transactional
 @ActiveProfiles("test")
+// If we don't disable the filters, the request will be treated as requiring authentication.
 @AutoConfigureMockMvc(addFilters = false)
 public class AuthControllerTest
 {
@@ -62,18 +63,20 @@ public class AuthControllerTest
     }
 
     @Test
-    void register_whenDTOIsInvalid_thenThrowBadRequest() throws Exception
+    void register_whenDTOIsInvalid_thenReturnBadRequest() throws Exception
     {
-        String invalidDTO = "invalid-dto";
+        String invalidDTO = "INVALID_DTO";
 
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(invalidDTO)))
-                .andExpect(status().isBadRequest());
+                        .content(invalidDTO))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("HTTP_MESSAGE_NOT_READABLE"))
+                .andExpect(jsonPath("$.message").value("Invalid request body."));
     }
 
     @Test
-    void register_whenUserIsAlreadyRegistered_thenThrowConflict() throws Exception
+    void register_whenUserIsAlreadyRegistered_thenReturnConflict() throws Exception
     {
         RegisterRequestDTO requestDTO = new RegisterRequestDTO(
                 "46622977",
@@ -91,7 +94,7 @@ public class AuthControllerTest
 
     @Test
     @WithMockUser(roles = "USER", username = "87654321")
-    void register_whenUserIsAuthenticated_thenThrowForbidden() throws Exception
+    void register_whenUserIsAuthenticated_thenReturnForbidden() throws Exception
     {
         RegisterRequestDTO requestDTO = new RegisterRequestDTO(
                 "12012012",
@@ -108,7 +111,7 @@ public class AuthControllerTest
     }
 
     @Test
-    void authenticate_whenCredentialsAreValid_thenReturnAuthenticateAndReturnTokens() throws Exception
+    void authenticate_whenCredentialsAreValid_thenAuthenticateAndReturnCookies() throws Exception
     {
         AuthRequestDTO requestDTO = new AuthRequestDTO(
                 "46622977",
@@ -118,13 +121,13 @@ public class AuthControllerTest
         mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDTO)))
+                .andExpect(status().isOk())
                 .andExpect(cookie().exists("access-token"))
-                .andExpect(cookie().exists("refresh-token"))
-                .andExpect(status().isOk());
+                .andExpect(cookie().exists("refresh-token"));
     }
 
     @Test
-    void authenticate_whenCredentialsAreInvalid_thenThrowUnauthorized() throws Exception
+    void authenticate_whenCredentialsAreInvalid_thenReturnUnauthorized() throws Exception
     {
         AuthRequestDTO requestDTO = new AuthRequestDTO(
                 "46622977",
@@ -148,7 +151,7 @@ public class AuthControllerTest
 
     @Test
     @WithMockUser(roles = "USER", username = "87654321")
-    void authenticate_whenUserIsAuthenticated_thenThrowForbidden() throws Exception
+    void authenticate_whenUserIsAuthenticated_thenReturnForbidden() throws Exception
     {
         AuthRequestDTO requestDTO = new AuthRequestDTO(
                 "87654321",
@@ -162,6 +165,7 @@ public class AuthControllerTest
     }
 
     @Test
+    @WithMockUser(roles = "USER", username = "87654321")
     void refresh_whenRefreshTokenIsValid_thenReturnNewAccessToken() throws Exception
     {
         UserEntity user = userRepository.findByDni("87654321").orElse(null);
@@ -174,14 +178,14 @@ public class AuthControllerTest
     }
 
     @Test
-    void refresh_whenCookiesDoNotExist_thenThrowUnauthorized() throws Exception
+    void refresh_whenCookiesDoNotExist_thenReturnUnauthorized() throws Exception
     {
         mockMvc.perform(post("/api/v1/auth/refresh"))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
-    void refresh_whenRefreshTokenCookieDoesNotExist_thenThrowUnauthorized() throws Exception
+    void refresh_whenRefreshTokenCookieDoesNotExist_thenReturnUnauthorized() throws Exception
     {
         mockMvc.perform(post("/api/v1/auth/refresh")
                         .cookie(new Cookie("access-token", "")))
@@ -189,7 +193,7 @@ public class AuthControllerTest
     }
 
     @Test
-    void refresh_whenUserDoesNotExist_thenThrowNotFound() throws Exception
+    void refresh_whenUserDoesNotExist_thenReturnUnauthorized() throws Exception
     {
         UserEntity user = userRepository.findByDni("87654321").orElse(null);
         String refreshToken = jwtService.generateRefreshTokenCookie(user).getValue();
@@ -201,7 +205,7 @@ public class AuthControllerTest
     }
 
     @Test
-    void refresh_whenTokenIsInvalid_thenThrowUnauthorized() throws Exception
+    void refresh_whenTokenIsInvalid_thenReturnUnauthorized() throws Exception
     {
         String invalidRefreshToken = "invalid-refresh-token";
 
@@ -211,7 +215,7 @@ public class AuthControllerTest
     }
 
     @Test
-    void refresh_whenTokenIsExpired_thenThrowUnauthorized() throws Exception
+    void refresh_whenTokenIsExpired_thenReturnUnauthorized() throws Exception
     {
         jwtService = new JwtService(
                 SECRET_KEY_TEST,
