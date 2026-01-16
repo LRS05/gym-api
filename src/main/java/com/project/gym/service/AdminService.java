@@ -34,33 +34,28 @@ public class AdminService
     public UserResponseDTO getUserByDni(String dni)
     {
         return userMapper.entityToDTO(
-                findUserByDniOrThrow(dni)
+                userRepository.findByDni(dni)
+                        .orElseThrow(() -> new UsernameNotFoundException("User not found."))
         );
     }
 
     public UserResponseDTO updateUserRoleByDni(String dni, RoleRequestDTO requestDTO)
     {
-        UserEntity user = findUserByDniOrThrow(dni);
-
-        ensureNotAdmin(user);
-
+        UserEntity user = findNonAdminUserByDniOrThrow(dni);
         user.setRole(requestDTO.role());
+
         UserEntity savedUser = userRepository.save(user);
 
-        log.info("Updated user with dni={} to {}", dni, requestDTO.role());
+        log.info("Updated user with dni={} and role={}, to {}", dni, user.getRole(), requestDTO.role());
         return userMapper.entityToDTO(savedUser);
     }
 
     public void deleteUserByDni(String dni)
     {
-        UserEntity user = findUserByDniOrThrow(dni);
+        UserEntity user = findNonAdminUserByDniOrThrow(dni);
 
-        ensureNotAdmin(user);
-
-        userRepository.delete(user);
-        customMetrics.decrementUsers();
-
-        log.info("Deleted user with dni={}", dni);
+        // Deletes the user, updates metrics, and logs the action.
+        deleteUser(user);
     }
 
     public void deleteUserById(int id)
@@ -68,25 +63,39 @@ public class AdminService
         UserEntity user = userRepository.findById(id)
                         .orElseThrow(() -> new UsernameNotFoundException("User not found."));
 
-        ensureNotAdmin(user);
+        if (user.getRole() == Role.ADMIN)
+        {
+            throw new AccessDeniedException("You cannot delete an ADMIN user.");
+        }
 
-        userRepository.delete(user);
-        customMetrics.decrementUsers();
-
-        log.info("Deleted user with id={}", id);
+        // Deletes the user, updates metrics, and logs the action.
+        deleteUser(user);
     }
 
-    private UserEntity findUserByDniOrThrow(String dni)
+    private UserEntity findNonAdminUserByDniOrThrow(String dni)
     {
-        return userRepository.findByDni(dni)
+        UserEntity user = userRepository.findByDni(dni)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found."));
-    }
 
-    private void ensureNotAdmin(UserEntity user)
-    {
         if (user.getRole() == Role.ADMIN)
         {
             throw new AccessDeniedException("You cannot perform this action on an ADMIN user.");
         }
+
+        return user;
+    }
+
+    private void deleteUser(UserEntity user)
+    {
+        userRepository.delete(user);
+        customMetrics.decrementUsers();
+
+        log.info("Deleted user {} {}, with id={}, dni={} and role={}",
+                user.getFirstName(),
+                user.getLastName(),
+                user.getId(),
+                user.getDni(),
+                user.getRole()
+        );
     }
 }

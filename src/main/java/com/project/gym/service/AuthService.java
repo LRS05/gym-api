@@ -14,7 +14,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -59,7 +58,7 @@ public class AuthService
                 .build();
 
         UserEntity savedUser = userRepository.save(user);
-        log.info("Successfully registered a new account with dni={}", requestDTO.dni());
+        log.debug("Registered a new account with dni={}", requestDTO.dni());
         customMetrics.incrementUsers();
         return generateTokenCookies(savedUser);
     }
@@ -76,7 +75,7 @@ public class AuthService
 
         UserEntity user = findUserByDniOrThrow(requestDTO.dni());
 
-        log.info("Successfully authenticated with dni={}", requestDTO.dni());
+        log.debug("Authenticated with dni={}", requestDTO.dni());
         return generateTokenCookies(user);
     }
 
@@ -90,7 +89,7 @@ public class AuthService
         {
             throw new InvalidTokenException("Invalid or expired refresh token.");
         }
-        log.info("Successfully refreshed access token");
+        log.debug("Refreshed access token");
         return jwtService.generateAccessTokenCookie(user);
     }
 
@@ -119,7 +118,7 @@ public class AuthService
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.isAuthenticated())
         {
-            throw new AccessDeniedException("You are already logged in.");
+            throw new UserAlreadyAuthenticatedException("You are already logged in.");
         }
     }
 }
