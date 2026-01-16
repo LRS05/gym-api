@@ -1,5 +1,9 @@
 package com.project.gym.exception;
 
+import com.project.gym.dto.ErrorResponseDTO;
+import com.project.gym.entity.enums.ApiError;
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -12,104 +16,132 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+import java.time.LocalDateTime;
+
 @Slf4j
+@RequiredArgsConstructor
 @RestControllerAdvice
 public class GlobalExceptionHandler
 {
-    @ExceptionHandler(UsernameNotFoundException.class)
-    public ResponseEntity<Object> handleUsernameNotFoundException(UsernameNotFoundException e)
-    {
-        return new ResponseEntity<>(e.getMessage(), HttpStatus.NOT_FOUND);
-    }
-
-    @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<Object> handleAccessDeniedException(AccessDeniedException e)
-    {
-        log.warn("Attempted to perform an action without permission");
-        return new ResponseEntity<>(e.getMessage(), HttpStatus.FORBIDDEN);
-    }
-
-    @ExceptionHandler(UserAlreadyExistsException.class)
-    public ResponseEntity<Object> handleUserAlreadyRegisteredException(UserAlreadyExistsException e)
-    {
-        return new ResponseEntity<>(e.getMessage(), HttpStatus.CONFLICT);
-    }
+    private final HttpServletRequest request;
 
     @ExceptionHandler(InvalidPasswordException.class)
-    public ResponseEntity<Object> handleInvalidPasswordException(InvalidPasswordException e)
+    public ResponseEntity<ErrorResponseDTO> handleInvalidPasswordException(InvalidPasswordException e)
     {
-        return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+        return sendErrorResponse(HttpStatus.BAD_REQUEST, e.getMessage(), ApiError.INVALID_PASSWORD);
+    }
+
+    @ExceptionHandler(InvalidTokenException.class)
+    public ResponseEntity<ErrorResponseDTO> handleInvalidTokenException(InvalidTokenException e)
+    {
+        log.warn("Attempted to use an invalid or expired JWT");
+        return sendErrorResponse(HttpStatus.UNAUTHORIZED, e.getMessage(), ApiError.INVALID_TOKEN);
+    }
+
+    @ExceptionHandler(CookieNotFoundException.class)
+    public ResponseEntity<ErrorResponseDTO> handleCookieNotFoundException(CookieNotFoundException e)
+    {
+        log.warn("Attempted to perform an action without a JWT cookie");
+        return sendErrorResponse(HttpStatus.UNAUTHORIZED, e.getMessage(), ApiError.COOKIE_NOT_FOUND);
+    }
+
+    @ExceptionHandler(UserAlreadyAuthenticatedException.class)
+    public ResponseEntity<ErrorResponseDTO> handleUserAlreadyAuthenticatedException(UserAlreadyAuthenticatedException e)
+    {
+        return sendErrorResponse(HttpStatus.FORBIDDEN, e.getMessage(), ApiError.USER_ALREADY_AUTHENTICATED);
     }
 
     @ExceptionHandler(MembershipNotFoundException.class)
-    public ResponseEntity<Object> handleMembershipNotFoundException(MembershipNotFoundException e)
+    public ResponseEntity<ErrorResponseDTO> handleMembershipNotFoundException(MembershipNotFoundException e)
     {
-        return new ResponseEntity<>(e.getMessage(), HttpStatus.NOT_FOUND);
+        return sendErrorResponse(HttpStatus.NOT_FOUND, e.getMessage(), ApiError.MEMBERSHIP_NOT_FOUND);
     }
 
     @ExceptionHandler(InvalidMembershipAssignmentException.class)
-    public ResponseEntity<Object> handleInvalidMembershipAssignmentException(InvalidMembershipAssignmentException e)
+    public ResponseEntity<ErrorResponseDTO> handleInvalidMembershipAssignmentException(InvalidMembershipAssignmentException e)
     {
         log.warn("Attempted to create a membership for an ADMIN or STAFF");
-        return new ResponseEntity<>(e.getMessage(), HttpStatus.FORBIDDEN);
+        return sendErrorResponse(HttpStatus.CONFLICT, e.getMessage(), ApiError.INVALID_MEMBERSHIP_ASSIGNMENT);
     }
 
-    @ExceptionHandler(BadCredentialsException.class)
-    public ResponseEntity<Object> handleBadCredentialsException(BadCredentialsException e)
+    @ExceptionHandler(UserAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponseDTO> handleUserAlreadyExistsException(UserAlreadyExistsException e)
     {
-        log.info("Authentication failed due to bad credentials");
-        return new ResponseEntity<>(e.getMessage(), HttpStatus.UNAUTHORIZED);
+        return sendErrorResponse(HttpStatus.CONFLICT, e.getMessage(), ApiError.USER_ALREADY_EXISTS);
     }
 
-    // Thrown when there are issues with the URL parameters.
-    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public ResponseEntity<Object> handleMethodArgumentMismatchException(MethodArgumentTypeMismatchException e)
+    @ExceptionHandler(PhoneNumberAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponseDTO> handlePhoneNumberAlreadyExistsException(PhoneNumberAlreadyExistsException e)
     {
-        return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+        return sendErrorResponse(HttpStatus.CONFLICT, e.getMessage(), ApiError.PHONE_NUMBER_ALREADY_EXISTS);
     }
 
-    // Thrown when an invalid DTO is sent.
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Object> handleMethodArgumentNotValidException(MethodArgumentNotValidException e)
-    {
-        return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
-    }
 
-    // Thrown when the request body is invalid.
-    @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<Object> handleHttpMessageNotReadableException(HttpMessageNotReadableException e)
-    {
-        return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
-    }
 
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<Object> handleGenericException(Exception e)
-    {
-        log.error("Unexpected error occurred");
-        return new ResponseEntity<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
-    }
+
 
 
 
     /*
-
-       JWT Tokens Exceptions
-
+     * Non-custom exceptions
      */
 
-
-
-    @ExceptionHandler(CookieNotFoundException.class)
-    public ResponseEntity<Object> handleCookieNotFoundException(CookieNotFoundException e)
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponseDTO> handleMethodArgumentMismatchException(MethodArgumentTypeMismatchException e)
     {
-        log.warn("Attempted to perform an action without a JWT cookie");
-        return new ResponseEntity<>(e.getMessage(), HttpStatus.UNAUTHORIZED);
+        return sendErrorResponse(HttpStatus.BAD_REQUEST, "Invalid URL parameter type.", ApiError.METHOD_ARGUMENT_MISMATCH);
     }
 
-    @ExceptionHandler(InvalidTokenException.class)
-    public ResponseEntity<Object> handleInvalidTokenException(InvalidTokenException e)
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponseDTO> handleMethodArgumentNotValidException(MethodArgumentNotValidException e)
     {
-        log.warn("Attempted to use an invalid or expired JWT");
-        return new ResponseEntity<>(e.getMessage(), HttpStatus.UNAUTHORIZED);
+        return sendErrorResponse(HttpStatus.BAD_REQUEST, "One or more fields are invalid.", ApiError.METHOD_ARGUMENT_NOT_VALID);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponseDTO> handleHttpMessageNotReadableException(HttpMessageNotReadableException e)
+    {
+        return sendErrorResponse(HttpStatus.BAD_REQUEST, "Invalid request body.", ApiError.HTTP_MESSAGE_NOT_READABLE);
+    }
+
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<ErrorResponseDTO> handleBadCredentialsException(BadCredentialsException e)
+    {
+        return sendErrorResponse(HttpStatus.UNAUTHORIZED, e.getMessage(), ApiError.BAD_CREDENTIALS);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponseDTO> handleAccessDeniedException(AccessDeniedException e)
+    {
+        // This exception is logged with WARN level in the methods where it may be thrown.
+        return sendErrorResponse(HttpStatus.FORBIDDEN, e.getMessage(), ApiError.ACCESS_DENIED);
+    }
+
+    @ExceptionHandler(UsernameNotFoundException.class)
+    public ResponseEntity<ErrorResponseDTO> handleUsernameNotFoundException(UsernameNotFoundException e)
+    {
+        return sendErrorResponse(HttpStatus.NOT_FOUND, e.getMessage(), ApiError.USERNAME_NOT_FOUND);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponseDTO> handleGenericException(Exception e)
+    {
+        log.error("Unexpected error occurred");
+        return sendErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected error occurred", ApiError.GENERIC);
+    }
+
+    private ResponseEntity<ErrorResponseDTO> sendErrorResponse(HttpStatus status, String message, ApiError error)
+    {
+        return ResponseEntity
+                .status(status)
+                .body(
+                        new ErrorResponseDTO(
+                                LocalDateTime.now(),
+                                status.value(),
+                                message,
+                                error,
+                                request.getRequestURI()
+                        )
+                );
     }
 }
