@@ -36,11 +36,11 @@ public class UserService
     public void deleteMe(PasswordRequestDTO requestDTO)
     {
         UserEntity user = findCurrentUserOrThrow();
-
         if (!passwordEncoder.matches(requestDTO.password(), user.getPassword()))
         {
-            throw new InvalidPasswordException("Incorrect password.");
+            throw new InvalidPasswordException("Invalid password.");
         }
+
         userRepository.delete(user);
         customMetrics.decrementUsers();
         log.info("Deleted own account with dni={}", user.getDni());
