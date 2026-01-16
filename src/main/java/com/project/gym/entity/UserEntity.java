@@ -42,7 +42,7 @@ public class UserEntity implements UserDetails
     @Column(name = "last_name", nullable = false)
     private String lastName;
 
-    @Column(name = "phone_number")
+    @Column(name = "phone_number", unique = true)
     private String phoneNumber;
 
     @Column(name = "creation_date")
