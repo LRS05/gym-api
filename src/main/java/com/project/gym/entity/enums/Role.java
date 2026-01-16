@@ -22,7 +22,7 @@ public enum Role
     ),
     STAFF(
             Set.of(
-                    USER_READ, USER_UPDATE, USER_DELETE,
+                    USER_READ,
                     MEMBERSHIP_CREATE, MEMBERSHIP_READ, MEMBERSHIP_UPDATE
             )
     ),
