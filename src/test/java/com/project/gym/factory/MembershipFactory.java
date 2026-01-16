@@ -1,4 +1,4 @@
-package com.project.gym.data;
+package com.project.gym.factory;
 
 import com.project.gym.dto.MembershipResponseDTO;
 import com.project.gym.entity.MembershipEntity;

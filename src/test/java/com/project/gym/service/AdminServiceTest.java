@@ -7,7 +7,7 @@ import com.project.gym.entity.UserEntity;
 import com.project.gym.entity.enums.Role;
 import com.project.gym.mapper.UserMapper;
 import com.project.gym.repository.UserRepository;
-import com.project.gym.data.UserFactory;
+import com.project.gym.factory.UserFactory;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -39,7 +39,7 @@ public class AdminServiceTest
     private AdminService adminService;
 
     @Test
-    void getUsers_whenUsersExist_thenReturnUserList()
+    void getUsers_whenUsersExist_thenReturnUsersList()
     {
         // Given
         List<UserEntity> expectedUsers = UserFactory.userList();

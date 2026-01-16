@@ -15,8 +15,8 @@ import com.project.gym.exception.MembershipNotFoundException;
 import com.project.gym.mapper.MembershipMapper;
 import com.project.gym.repository.MembershipRepository;
 import com.project.gym.repository.UserRepository;
-import com.project.gym.data.MembershipFactory;
-import com.project.gym.data.UserFactory;
+import com.project.gym.factory.MembershipFactory;
+import com.project.gym.factory.UserFactory;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -306,7 +306,7 @@ public class MembershipServiceTest
         MembershipResponseDTO expectedDTO = MembershipFactory.userNotRegisteredMembershipDTO();
 
         // When
-        when(membershipRepository.findFirstByUserDniOrderByPaymentDateDesc(dni)).thenReturn(Optional.of(expectedMembership));
+        when(membershipRepository.findLastByUserDni(dni)).thenReturn(Optional.of(expectedMembership));
         when(membershipMapper.entityToDTO(expectedMembership)).thenReturn(expectedDTO);
 
         MembershipResponseDTO result = membershipService.getLastMembershipByDni(dni);
@@ -314,7 +314,7 @@ public class MembershipServiceTest
         // Then
         assertEquals(expectedDTO, result);
 
-        verify(membershipRepository).findFirstByUserDniOrderByPaymentDateDesc(dni);
+        verify(membershipRepository).findLastByUserDni(dni);
         verify(membershipMapper).entityToDTO(expectedMembership);
     }
 
@@ -325,12 +325,12 @@ public class MembershipServiceTest
         String dni = "88888888";
 
         // When
-        when(membershipRepository.findFirstByUserDniOrderByPaymentDateDesc(dni)).thenReturn(Optional.empty());
+        when(membershipRepository.findLastByUserDni(dni)).thenReturn(Optional.empty());
 
         // Then
         assertThrows(MembershipNotFoundException.class, () -> membershipService.getLastMembershipByDni(dni));
 
-        verify(membershipRepository).findFirstByUserDniOrderByPaymentDateDesc(dni);
+        verify(membershipRepository).findLastByUserDni(dni);
     }
 
     @Test

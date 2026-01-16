@@ -7,7 +7,7 @@ import com.project.gym.entity.UserEntity;
 import com.project.gym.exception.InvalidPasswordException;
 import com.project.gym.mapper.UserMapper;
 import com.project.gym.repository.UserRepository;
-import com.project.gym.data.UserFactory;
+import com.project.gym.factory.UserFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

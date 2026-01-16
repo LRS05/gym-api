@@ -1,7 +1,7 @@
 package com.project.gym.service;
 
 import com.project.gym.entity.UserEntity;
-import com.project.gym.data.UserFactory;
+import com.project.gym.factory.UserFactory;
 import com.project.gym.entity.enums.TokenType;
 import com.project.gym.exception.CookieNotFoundException;
 import com.project.gym.exception.InvalidTokenException;

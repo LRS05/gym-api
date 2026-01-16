@@ -8,7 +8,7 @@ import com.project.gym.entity.enums.Gender;
 import com.project.gym.entity.enums.TokenType;
 import com.project.gym.exception.*;
 import com.project.gym.repository.UserRepository;
-import com.project.gym.data.UserFactory;
+import com.project.gym.factory.UserFactory;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.Test;
