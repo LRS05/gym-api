@@ -42,7 +42,7 @@ public class MembershipService
         incrementActiveMembershipsMetrics();
         sendMembershipCreatedMessage(savedMembership);
 
-        log.info("Created a membership for the user with dni={}, type={}, payment method={}", dni, requestDTO.type(), requestDTO.paymentMethod());
+        log.info("Created a new membership for the user with dni={}, type={} and payment method={}", dni, requestDTO.type(), requestDTO.paymentMethod());
         return membershipMapper.entityToDTO(savedMembership);
     }
 
@@ -63,18 +63,14 @@ public class MembershipService
 
     public List<MembershipResponseDTO> getAllByDni(String dni)
     {
-        List<MembershipEntity> memberships = membershipRepository.findAllByUserDni(dni);
-        if (memberships.isEmpty())
-        {
-            throw new MembershipNotFoundException("Memberships not found.");
-        }
+        List<MembershipEntity> memberships = findAllByDniOrThrow(dni);
         return membershipMapper.entityToDTO(memberships);
     }
 
     public MembershipResponseDTO getLastMembershipByDni(String dni)
     {
         return membershipMapper.entityToDTO(
-                membershipRepository.findFirstByUserDniOrderByPaymentDateDesc(dni)
+                membershipRepository.findLastByUserDni(dni)
                         .orElseThrow(() -> new MembershipNotFoundException("Membership not found."))
         );
     }
@@ -221,5 +217,15 @@ public class MembershipService
         {
             whatsAppService.sendMembershipCreatedMessage(membership, membership.getUser());
         }
+    }
+
+    private List<MembershipEntity> findAllByDniOrThrow(String dni)
+    {
+        List<MembershipEntity> memberships = membershipRepository.findAllByUserDni(dni);
+        if (memberships.isEmpty())
+        {
+            throw new MembershipNotFoundException("Memberships not found.");
+        }
+        return memberships;
     }
 }
