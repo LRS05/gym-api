@@ -44,11 +44,9 @@ public class UserController
 
 
 
-    /*
 
-        Membership Controllers
 
-     */
+
 
 
     @PostMapping("/memberships")
