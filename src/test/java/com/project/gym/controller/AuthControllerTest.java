@@ -44,6 +44,28 @@ public class AuthControllerTest
     private JwtService jwtService;
 
     @Test
+    void register_whenFieldsAreInvalid_thenReturnValidationMessages() throws Exception
+    {
+        RegisterRequestDTO requestDTO = new RegisterRequestDTO(
+                "123",
+                "123",
+                null,
+                "123",
+                "123"
+        );
+
+        mockMvc.perform(post("/api/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestDTO)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.dni").exists())
+                .andExpect(jsonPath("$.password").exists())
+                .andExpect(jsonPath("$.gender").exists())
+                .andExpect(jsonPath("$.firstName").exists())
+                .andExpect(jsonPath("$.lastName").exists());
+    }
+
+    @Test
     void register_whenUserIsNotRegistered_thenRegisterUserAndReturnTokens() throws Exception
     {
         RegisterRequestDTO requestDTO = new RegisterRequestDTO(
