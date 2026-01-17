@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -93,9 +95,16 @@ public class GlobalExceptionHandler
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponseDTO> handleMethodArgumentNotValidException(MethodArgumentNotValidException e)
+    public ResponseEntity<Map<String, String>> handleMethodArgumentNotValidException(MethodArgumentNotValidException e)
     {
-        return sendErrorResponse(HttpStatus.BAD_REQUEST, "One or more fields are invalid.", ApiError.METHOD_ARGUMENT_NOT_VALID);
+        Map<String, String> errors = new HashMap<>();
+
+        // Store the field and its validation message in the HashMap (field, validation_message)
+        e.getBindingResult().getFieldErrors().forEach(error -> errors.put(error.getField(), error.getDefaultMessage()));
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(errors);
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
