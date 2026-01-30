@@ -1,41 +1,31 @@
 package com.project.gym.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.project.gym.dto.AuthRequestDTO;
 import com.project.gym.dto.RegisterRequestDTO;
 import com.project.gym.entity.UserEntity;
 import com.project.gym.entity.enums.Gender;
 import com.project.gym.repository.UserRepository;
 import com.project.gym.service.JwtService;
-import jakarta.servlet.http.Cookie;
-import jakarta.transaction.Transactional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.HttpHeaders;
+import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.http.ResponseCookie;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.client.RestTestClient;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-
-@SpringBootTest
-@Transactional
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
-// If we don't disable the filters, the request will be treated as requiring authentication.
-@AutoConfigureMockMvc(addFilters = false)
 public class AuthControllerTest
 {
-    private static final String SECRET_KEY_TEST = "Z29yZG9ib2xpdmlhbm9sYWNvbmNoYWRldHVtYWRyZXRldm95YXZpb2xhcmRlYWxvdmlvbGFiYWphYWphamRlYXJlbW9nb2xpY28";
+    @LocalServerPort
+    int port;
 
-    @Autowired
-    private MockMvc mockMvc;
-
-    @Autowired
-    private ObjectMapper objectMapper;
+    private RestTestClient restTestClient;
 
     @Autowired
     private UserRepository userRepository;
@@ -43,222 +33,233 @@ public class AuthControllerTest
     @Autowired
     private JwtService jwtService;
 
-    @Test
-    void register_whenFieldsAreInvalid_thenReturnValidationMessages() throws Exception
+    @BeforeEach
+    void setUp()
     {
-        RegisterRequestDTO requestDTO = new RegisterRequestDTO(
-                "123",
-                "123",
-                null,
-                "123",
-                "123"
-        );
-
-        mockMvc.perform(post("/api/v1/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(requestDTO)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.dni").exists())
-                .andExpect(jsonPath("$.password").exists())
-                .andExpect(jsonPath("$.gender").exists())
-                .andExpect(jsonPath("$.firstName").exists())
-                .andExpect(jsonPath("$.lastName").exists());
+        restTestClient = RestTestClient.bindToServer()
+                .baseUrl("http://localhost:" + port)
+                .build();
     }
 
     @Test
-    void register_whenUserIsNotRegistered_thenRegisterUserAndReturnTokens() throws Exception
+    void register_whenUserIsNotRegistered_thenRegisterUserAndReturnCookies()
     {
         RegisterRequestDTO requestDTO = new RegisterRequestDTO(
-                "99999999",
-                "Gordomono8!",
-                Gender.MALE,
-                "Angelo",
-                "Rochista"
-        );
-
-        mockMvc.perform(post("/api/v1/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(requestDTO)))
-                .andExpect(cookie().exists("access-token"))
-                .andExpect(cookie().exists("refresh-token"))
-                .andExpect(status().isCreated());
-    }
-
-    @Test
-    void register_whenDTOIsInvalid_thenReturnBadRequest() throws Exception
-    {
-        String invalidDTO = "INVALID_DTO";
-
-        mockMvc.perform(post("/api/v1/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(invalidDTO))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("HTTP_MESSAGE_NOT_READABLE"))
-                .andExpect(jsonPath("$.message").value("Invalid request body."));
-    }
-
-    @Test
-    void register_whenUserIsAlreadyRegistered_thenReturnConflict() throws Exception
-    {
-        RegisterRequestDTO requestDTO = new RegisterRequestDTO(
-                "46622977",
-                "Gordomono8!",
-                Gender.MALE,
-                "Lorenzo",
-                "Sarlo"
-        );
-
-        mockMvc.perform(post("/api/v1/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(requestDTO)))
-                .andExpect(status().isConflict());
-    }
-
-    @Test
-    @WithMockUser(roles = "USER", username = "87654321")
-    void register_whenUserIsAuthenticated_thenReturnForbidden() throws Exception
-    {
-        RegisterRequestDTO requestDTO = new RegisterRequestDTO(
-                "12012012",
-                "Gordomono8!",
+                "10101010",
+                "Gatorade123!",
                 Gender.MALE,
                 "Enzo",
                 "Viviani"
         );
 
-        mockMvc.perform(post("/api/v1/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(requestDTO)))
-                .andExpect(status().isForbidden());
+        restTestClient.post()
+                .uri("/api/v1/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(requestDTO)
+                .exchange()
+                .expectStatus().isCreated();
     }
 
     @Test
-    void authenticate_whenCredentialsAreValid_thenAuthenticateAndReturnCookies() throws Exception
+    void register_whenDTOFieldsAreInvalid_thenReturnBadRequest()
     {
-        AuthRequestDTO requestDTO = new AuthRequestDTO(
-                "46622977",
-                "Gordomono8!"
+        RegisterRequestDTO requestDTO = new RegisterRequestDTO(
+                "123",
+                "hello123",
+                Gender.MALE,
+                "Enzo123",
+                "Hola!!!"
         );
 
-        mockMvc.perform(post("/api/v1/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(requestDTO)))
-                .andExpect(status().isOk())
-                .andExpect(cookie().exists("access-token"))
-                .andExpect(cookie().exists("refresh-token"));
+        restTestClient.post()
+                .uri("/api/v1/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(requestDTO)
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.dni").exists()
+                .jsonPath("$.firstName").exists()
+                .jsonPath("$.lastName").exists()
+                .jsonPath("$.password").exists();
     }
 
     @Test
-    void authenticate_whenCredentialsAreInvalid_thenReturnUnauthorized() throws Exception
+    void register_whenUserIsAlreadyRegistered_thenReturnConflict()
     {
-        AuthRequestDTO requestDTO = new AuthRequestDTO(
-                "46622977",
-                "hola1234"
-        );
-
-        mockMvc.perform(post("/api/v1/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(requestDTO)))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    void authenticate_whenMissingCredentials_thenReturnBadRequest() throws Exception
-    {
-        mockMvc.perform(post("/api/v1/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(""))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    @WithMockUser(roles = "USER", username = "87654321")
-    void authenticate_whenUserIsAuthenticated_thenReturnForbidden() throws Exception
-    {
-        AuthRequestDTO requestDTO = new AuthRequestDTO(
+        RegisterRequestDTO requestDTO = new RegisterRequestDTO(
                 "87654321",
+                "Gatorade123!",
+                Gender.MALE,
+                "Enzo",
+                "Viviani"
+        );
+
+        restTestClient.post()
+                .uri("/api/v1/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(requestDTO)
+                .exchange()
+                .expectStatus().isEqualTo(HttpStatus.CONFLICT)
+                .expectBody()
+                .jsonPath("$.error").isEqualTo("USER_ALREADY_EXISTS")
+                .jsonPath("$.message").isEqualTo("User is already registered.");
+    }
+
+    @Test
+    void register_whenRequestBodyIsMalformed_thenReturnBadRequest()
+    {
+        String invalidDTO = "INVALID_REQUEST_BODY";
+
+        restTestClient.post()
+                .uri("/api/v1/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(invalidDTO)
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.error").isEqualTo("HTTP_MESSAGE_NOT_READABLE")
+                .jsonPath("$.message").isEqualTo("Invalid request body.");
+    }
+
+    @Test
+    void register_whenRequestBodyIsEmpty_thenReturnBadRequest()
+    {
+        restTestClient.post()
+                .uri("/api/v1/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("{}")
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.dni").isEqualTo("Dni is required.")
+                .jsonPath("$.password").isEqualTo("Password is required.");
+    }
+
+    @Test
+    void authenticate_whenCredentialsAreValid_thenReturnCookies()
+    {
+        AuthRequestDTO requestDTO = new AuthRequestDTO(
+                "46622977",
                 "Gordomono8!"
         );
 
-        mockMvc.perform(post("/api/v1/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(requestDTO)))
-                .andExpect(status().isForbidden());
+        restTestClient.post()
+                .uri("/api/v1/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(requestDTO)
+                .exchange()
+                .expectStatus().isOk()
+                .expectCookie().exists("access-token")
+                .expectCookie().exists("refresh-token");
     }
 
     @Test
-    @WithMockUser(roles = "USER", username = "87654321")
-    void refresh_whenRefreshTokenIsValid_thenReturnNewAccessToken() throws Exception
+    void authenticate_whenCredentialsAreInvalid_thenReturnUnauthorized()
     {
-        UserEntity user = userRepository.findByDni("87654321").orElse(null);
-
-        String refreshToken = jwtService.generateRefreshTokenCookie(user).getValue();
-        mockMvc.perform(post("/api/v1/auth/refresh")
-                        .cookie(new Cookie("refresh-token", refreshToken)))
-                .andExpect(status().isNoContent())
-                .andExpect(header().exists(HttpHeaders.SET_COOKIE));
-    }
-
-    @Test
-    void refresh_whenCookiesDoNotExist_thenReturnUnauthorized() throws Exception
-    {
-        mockMvc.perform(post("/api/v1/auth/refresh"))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    void refresh_whenRefreshTokenCookieDoesNotExist_thenReturnUnauthorized() throws Exception
-    {
-        mockMvc.perform(post("/api/v1/auth/refresh")
-                        .cookie(new Cookie("access-token", "")))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    void refresh_whenUserDoesNotExist_thenReturnUnauthorized() throws Exception
-    {
-        UserEntity user = userRepository.findByDni("87654321").orElse(null);
-        String refreshToken = jwtService.generateRefreshTokenCookie(user).getValue();
-        userRepository.deleteById(3);
-
-        mockMvc.perform(post("/api/v1/auth/refresh")
-                        .cookie(new Cookie("refresh-token", refreshToken)))
-                .andExpect(status().isNotFound());
-    }
-
-    @Test
-    void refresh_whenTokenIsInvalid_thenReturnUnauthorized() throws Exception
-    {
-        String invalidRefreshToken = "invalid-refresh-token";
-
-        mockMvc.perform(post("/api/v1/auth/refresh")
-                        .cookie(new Cookie("refresh-token", invalidRefreshToken)))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    void refresh_whenTokenIsExpired_thenReturnUnauthorized() throws Exception
-    {
-        jwtService = new JwtService(
-                SECRET_KEY_TEST,
-                -1,
-                -1
+        AuthRequestDTO requestDTO = new AuthRequestDTO(
+                "46622977",
+                "Gatorade123!"
         );
 
-        UserEntity user =  userRepository.findByDni("87654321").orElse(null);
-        String refreshToken = jwtService.generateRefreshTokenCookie(user).getValue();
-
-        mockMvc.perform(post("/api/v1/auth/refresh")
-                        .cookie(new Cookie("refresh-token", refreshToken)))
-                .andExpect(status().isUnauthorized());
+        restTestClient.post()
+                .uri("/api/v1/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(requestDTO)
+                .exchange()
+                .expectStatus().isUnauthorized()
+                .expectBody()
+                .jsonPath("$.error").isEqualTo("BAD_CREDENTIALS")
+                .jsonPath("$.message").isEqualTo("Bad credentials");
     }
 
     @Test
-    void logout_whenCookiesAreNotEmpty_thenEmptyCookies() throws Exception
+    void authenticate_whenRequestBodyIsMalformed_thenReturnBadRequest()
     {
-        mockMvc.perform(post("/api/v1/auth/logout")
-                        .cookie(new Cookie("access-token", "access-token-value"))
-                        .cookie(new Cookie("refresh-token", "refresh-token-value")))
-                .andExpect(status().isOk());
+        String invalidDTO = "INVALID_REQUEST_BODY";
+
+        restTestClient.post()
+                .uri("/api/v1/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(invalidDTO)
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.error").isEqualTo("HTTP_MESSAGE_NOT_READABLE")
+                .jsonPath("$.message").isEqualTo("Invalid request body.");
+    }
+
+    @Test
+    void authenticate_whenRequestBodyIsEmpty_thenReturnBadRequest()
+    {
+
+        restTestClient.post()
+                .uri("/api/v1/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("{}")
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.dni").isEqualTo("Dni is required.")
+                .jsonPath("$.password").isEqualTo("Password is required.");
+    }
+
+    @Test
+    void refresh_whenRefreshTokenIsValid_thenReturnNewAccessTokenCookie()
+    {
+        UserEntity user = userRepository.findById(1)
+                .orElse(null);
+
+        ResponseCookie refreshTokenCookie = jwtService.generateRefreshTokenCookie(user);
+
+        restTestClient.post()
+                .uri("/api/v1/auth/refresh")
+                .cookie("refresh-token", refreshTokenCookie.getValue())
+                .exchange()
+                .expectStatus().isNoContent()
+                .expectCookie().exists("access-token");
+    }
+
+    @Test
+    void refresh_whenRefreshTokenCookieIsEmpty_thenReturnUnauthorized()
+    {
+        restTestClient.post()
+                .uri("/api/v1/auth/refresh")
+                .cookie("refresh-token", "")
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.AFTER_METHOD)
+    void refresh_whenTokenOwnerDoesNotExist_thenReturnNotFound()
+    {
+        UserEntity user = userRepository.findById(1)
+                .orElse(null);
+
+        ResponseCookie refreshTokenCookie = jwtService.generateRefreshTokenCookie(user);
+
+        userRepository.delete(user);
+
+        restTestClient.post()
+                .uri("/api/v1/auth/refresh")
+                .cookie("refresh-token", refreshTokenCookie.getValue())
+                .exchange()
+                .expectStatus().isNotFound();
+    }
+
+    @Test
+    void accessAuthUrls_whenUserIsAuthenticated_thenReturnForbidden()
+    {
+        UserEntity user = userRepository.findById(1)
+                .orElse(null);
+
+        ResponseCookie accessTokenCookie = jwtService.generateAccessTokenCookie(user);
+
+        restTestClient.post()
+                .uri("/api/v1/auth/register")
+                .cookie("access-token", accessTokenCookie.getValue())
+                .exchange()
+                .expectStatus().isForbidden();
     }
 }

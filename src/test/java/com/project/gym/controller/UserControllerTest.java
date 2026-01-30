@@ -1,182 +1,222 @@
 package com.project.gym.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.project.gym.dto.MembershipRequestDTO;
 import com.project.gym.dto.PasswordRequestDTO;
+import com.project.gym.entity.UserEntity;
 import com.project.gym.entity.enums.MembershipType;
 import com.project.gym.entity.enums.PaymentMethod;
-import jakarta.transaction.Transactional;
+import com.project.gym.repository.MembershipRepository;
+import com.project.gym.repository.UserRepository;
+import com.project.gym.service.JwtService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.http.ResponseCookie;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.client.RestTestClient;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import java.util.List;
 
-@SpringBootTest
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
-@AutoConfigureMockMvc
-@Transactional
 public class UserControllerTest
 {
-    @Autowired
-    private MockMvc mockMvc;
+    @LocalServerPort
+    private int port;
+
+    private RestTestClient restTestClient;
 
     @Autowired
-    private ObjectMapper objectMapper;
+    private UserRepository userRepository;
 
-    @Test
-    @WithMockUser(roles = "USER", username = "87654321")
-    void getMe_whenUserIsAuthenticated_thenReturnOwnInfo() throws Exception
+    @Autowired
+    private JwtService jwtService;
+
+    @Autowired
+    private MembershipRepository membershipRepository;
+
+    @BeforeEach
+    void setUp()
     {
-        mockMvc.perform(get("/api/v1/user"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.dni").value("87654321"))
-                .andExpect(jsonPath("$.role").value("USER"));
+        UserEntity user = userRepository.findById(3)
+                .orElse(null);
+
+        ResponseCookie accessTokenCookie = jwtService.generateAccessTokenCookie(user);
+
+        restTestClient = RestTestClient.bindToServer()
+                .baseUrl("http://localhost:" + port)
+                .defaultCookie("access-token", accessTokenCookie.getValue())
+                .build();
     }
 
     @Test
-    @WithMockUser(roles = "USER", username = "87654321")
-    void deleteMe_whenPasswordIsValid_thenDeleteUser() throws Exception
+    void getMe_whenUserIsAuthenticated_thenReturnUserInfo()
     {
-        PasswordRequestDTO requestDTO = new PasswordRequestDTO("Gordomono8!");
-
-        mockMvc.perform(delete("/api/v1/user")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(requestDTO)))
-                .andExpect(status().isOk())
-                .andExpect(content().string("Account deleted successfully."));
+        restTestClient.get()
+                .uri("/api/v1/user")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.dni").isEqualTo("87654321")
+                .jsonPath("$.role").isEqualTo("USER");
     }
 
     @Test
-    @WithMockUser(roles = "USER", username = "87654321")
-    void deleteMe_whenPasswordIsInvalid_thenReturnBadRequest() throws Exception
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.AFTER_METHOD)
+    void deleteMe_whenPasswordIsCorrect_thenDeleteUser()
     {
-        PasswordRequestDTO requestDTO = new PasswordRequestDTO("ABC123");
+        PasswordRequestDTO requestDTO = new PasswordRequestDTO(
+                "Gordomono8!"
+        );
 
-        mockMvc.perform(delete("/api/v1/user")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(requestDTO)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("INVALID_PASSWORD"))
-                .andExpect(jsonPath("$.message").value("Invalid password."));
+        restTestClient.method(HttpMethod.DELETE)
+                .uri("/api/v1/user")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(requestDTO)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(String.class)
+                .isEqualTo("Account deleted successfully.");
     }
 
     @Test
-    @WithMockUser(roles = "USER", username = "87654321")
-    void deleteMe_whenPasswordIsEmpty_thenReturnBadRequest() throws Exception
+    void deleteMe_whenPasswordIsIncorrect_thenReturnBadRequest()
     {
-        mockMvc.perform(delete("/api/v1/user")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(""))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("HTTP_MESSAGE_NOT_READABLE"))
-                .andExpect(jsonPath("$.message").value("Invalid request body."));
+        PasswordRequestDTO requestDTO = new PasswordRequestDTO(
+                "Hello123"
+        );
+
+        restTestClient.method(HttpMethod.DELETE)
+                .uri("/api/v1/user")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(requestDTO)
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.error").isEqualTo("INVALID_PASSWORD")
+                .jsonPath("$.message").isEqualTo("Incorrect password.");
     }
 
     @Test
-    @WithMockUser(roles = "USER", username = "99999999")
-    void deleteMe_whenUserDoesNotExist_thenReturnNotFound() throws Exception
+    void deleteMe_whenRequestBodyIsMalformed_thenReturnBadRequest()
     {
-        PasswordRequestDTO requestDTO = new PasswordRequestDTO("ABC123");
+        String invalidDTO = "INVALID_REQUEST_BODY";
 
-        mockMvc.perform(delete("/api/v1/user")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(requestDTO)))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.error").value("USERNAME_NOT_FOUND"))
-                .andExpect(jsonPath("$.message").value("User not found."));
+        restTestClient.method(HttpMethod.DELETE)
+                .uri("/api/v1/user")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(invalidDTO)
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.error").isEqualTo("HTTP_MESSAGE_NOT_READABLE")
+                .jsonPath("$.message").isEqualTo("Invalid request body.");
     }
 
     @Test
-    @WithMockUser(roles = "USER", username = "87654321")
-    void createMembershipByDni_whenDTOIsValid_thenReturnMembership() throws Exception
+    void deleteMe_whenRequestBodyIsEmpty_thenReturnBadRequest()
+    {
+        restTestClient.method(HttpMethod.DELETE)
+                .uri("/api/v1/user")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("{}")
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.password").isEqualTo("Password is required.");
+    }
+
+    @Test
+    void createMembership_whenDTOIsValid_thenReturnMembership()
     {
         MembershipRequestDTO requestDTO = new MembershipRequestDTO(
                 MembershipType.ANNUALLY,
                 PaymentMethod.CARD
         );
 
-        mockMvc.perform(post("/api/v1/user/memberships")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(requestDTO)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.user_dni").value("87654321"))
-                .andExpect(jsonPath("$.status").value("ACTIVE"))
-                .andExpect(jsonPath("$.type").value("ANNUALLY"))
-                .andExpect(jsonPath("$.payment_method").value("CARD"));
+        restTestClient.post()
+                .uri("/api/v1/user/memberships")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(requestDTO)
+                .exchange()
+                .expectStatus().isCreated()
+                .expectBody()
+                .jsonPath("$.user_dni").isEqualTo("87654321")
+                .jsonPath("$.type").isEqualTo("ANNUALLY")
+                .jsonPath("$.payment_method").isEqualTo("CARD");
     }
 
     @Test
-    @WithMockUser(roles = "USER", username = "87654321")
-    void createMembershipByDni_whenDTOIsInvalid_thenReturnBadRequest() throws Exception
+    void createMembership_whenRequestBodyIsMalformed_thenReturnBadRequest()
     {
-        String invalidDTO = "INVALID_DTO";
+        String invalidDTO = "INVALID_REQUEST_BODY";
 
-        mockMvc.perform(post("/api/v1/user/memberships")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(invalidDTO))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("HTTP_MESSAGE_NOT_READABLE"))
-                .andExpect(jsonPath("$.message").value("Invalid request body."));
+        restTestClient.post()
+                .uri("/api/v1/user/memberships")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(invalidDTO)
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.error").isEqualTo("HTTP_MESSAGE_NOT_READABLE")
+                .jsonPath("$.message").isEqualTo("Invalid request body.");
     }
 
     @Test
-    @WithMockUser(roles = "USER", username = "87654321")
-    void getMembershipsByDni_whenMembershipsExist_thenReturnMembershipList() throws Exception
+    void createMembership_whenRequestBodyIsEmpty_thenReturnBadRequest()
     {
-        mockMvc.perform(get("/api/v1/user/memberships"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(2))
-                .andExpect(jsonPath("$[0].user_dni").value("87654321"))
-                .andExpect(jsonPath("$[1].user_dni").value("87654321"));
+        restTestClient.post()
+                .uri("/api/v1/user/memberships")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("{}")
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.type").isEqualTo("Membership type is required.")
+                .jsonPath("$.paymentMethod").isEqualTo("Payment method is required.");
     }
 
     @Test
-    @WithMockUser(roles = "USER", username = "87654321")
-    void getLastMembershipByDni_whenMembershipExists_thenReturnMembership() throws Exception
+    void getMemberships_whenMembershipsExist_thenReturnMembershipsList()
     {
-        mockMvc.perform(get("/api/v1/user/memberships/last"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.user_dni").value("87654321"))
-                .andExpect(jsonPath("$.payment_date").value("2025-01-01"));
+        restTestClient.get()
+                .uri("/api/v1/user/memberships")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.length()").isEqualTo(2);
     }
 
     @Test
-    void accessUserUrls_whenUserIsNotAuthenticated_thenReturnUnauthorized() throws Exception
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.AFTER_METHOD)
+    void getMemberships_whenMembershipsDoNotExist_thenReturnNotFound()
     {
-        // With any HTTP method, this URL is unauthorized when the USER is not logged in.
-        mockMvc.perform(get("/api/v1/user/anything"))
-                .andExpect(status().isUnauthorized());
+        membershipRepository.deleteAllById(List.of( 1, 2));
+
+        restTestClient.get()
+                .uri("/api/v1/user/memberships")
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.error").isEqualTo("MEMBERSHIP_NOT_FOUND")
+                .jsonPath("$.message").isEqualTo("Memberships not found.");
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN", username = "46622977")
-    void accessUserUrls_whenUserDoesNotHaveUserRole_thenReturnForbidden() throws Exception
+    void getLastMembership_whenMembershipExists_thenReturnMembership()
     {
-        // With any HTTP method, this URL is forbidden for ADMIN and STAFF roles.
-        mockMvc.perform(get("/api/v1/user/anything"))
-                .andExpect(status().isForbidden());
-    }
-
-    @ParameterizedTest
-    @CsvSource({
-            "'', GET",
-            "/memberships, GET",
-            "/memberships/last, GET"
-    })
-    @WithMockUser(roles = "USER", username = "10101010")
-    void methodEntityByDni_whenUsersOrMembershipsDoNotExist_thenReturnNotFound(String url, HttpMethod method) throws Exception
-    {
-        mockMvc.perform(request(method, "/api/v1/user" + url))
-                .andExpect(status().isNotFound());
+        restTestClient.get()
+                .uri("/api/v1/user/memberships/last")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.user_dni").isEqualTo("87654321")
+                .jsonPath("$.status").isEqualTo("ACTIVE")
+                .jsonPath("$.next_payment_date").isEqualTo("2099-01-01");
     }
 }

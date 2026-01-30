@@ -1,44 +1,36 @@
 package com.project.gym.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.project.gym.dto.MembershipRequestDTO;
-import com.project.gym.dto.MembershipStatusRequestDTO;
-import com.project.gym.dto.RoleRequestDTO;
-import com.project.gym.entity.enums.MembershipStatus;
-import com.project.gym.entity.enums.MembershipType;
-import com.project.gym.entity.enums.PaymentMethod;
-import com.project.gym.entity.enums.Role;
+import com.project.gym.dto.*;
+import com.project.gym.entity.UserEntity;
+import com.project.gym.entity.enums.*;
 import com.project.gym.repository.MembershipRepository;
 import com.project.gym.repository.UserRepository;
-import jakarta.transaction.Transactional;
+import com.project.gym.service.JwtService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.HttpMethod;
+import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.http.ResponseCookie;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.client.RestTestClient;
 
 import java.util.List;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-
-@SpringBootTest
-@Transactional
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
-@AutoConfigureMockMvc
 public class AdminControllerTest
 {
-    @Autowired
-    private MockMvc mockMvc;
+    @LocalServerPort
+    int port;
+
+    private RestTestClient restTestClient;
 
     @Autowired
-    private ObjectMapper objectMapper;
+    private JwtService jwtService;
 
     @Autowired
     private UserRepository userRepository;
@@ -46,171 +38,257 @@ public class AdminControllerTest
     @Autowired
     private MembershipRepository membershipRepository;
 
-    @Test
-    @WithMockUser(roles = "ADMIN", username = "46622977")
-    void getMe_whenAdminIsAuthenticated_thenReturnOwnInfo() throws Exception
+    @BeforeEach
+    void setUp()
     {
-        mockMvc.perform(get("/api/v1/admin"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.dni").value("46622977"))
-                .andExpect(jsonPath("$.role").value("ADMIN"));
+        UserEntity admin = userRepository.findById(1)
+                .orElse(null);
+
+        ResponseCookie accessTokenCookie = jwtService.generateAccessTokenCookie(admin);
+
+        restTestClient = RestTestClient.bindToServer()
+                .baseUrl("http://localhost:" + port)
+                .defaultCookie("access-token", accessTokenCookie.getValue())
+                .build();
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN", username = "46622977")
-    void getUsers_whenUsersExist_thenReturnUsersList() throws Exception
+    void getMe_whenAdminIsAuthenticated_thenReturnOwnInfo()
     {
-        mockMvc.perform(get("/api/v1/admin/users"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(3));
+        restTestClient.get()
+                .uri("/api/v1/admin")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.dni").isEqualTo("46622977")
+                .jsonPath("$.role").isEqualTo("ADMIN");
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN", username = "46622977")
-    void getUsers_whenUsersDoNotExist_thenReturnOnlyAdminInfo() throws Exception
+    void getUsers_whenUsersExist_thenReturnUsersList()
     {
+        restTestClient.get()
+                .uri("/api/v1/admin/users")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.length()").isEqualTo(3);
+    }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.AFTER_METHOD)
+    void getUsers_whenUsersAndStaffDoNotExist_thenReturnAdminList()
+    {
+        // Delete users and staff.
         userRepository.deleteAllById(List.of(2, 3));
 
-        mockMvc.perform(get("/api/v1/admin/users"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].dni").value("46622977"))
-                .andExpect(jsonPath("$[0].role").value("ADMIN"));
+        restTestClient.get()
+                .uri("/api/v1/admin/users")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.length()").isEqualTo(1)
+                .jsonPath("$[0].role").isEqualTo("ADMIN")
+                .jsonPath("$[0].dni").isEqualTo("46622977");
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN", username = "46622977")
-    void getUserByDni_whenUserExists_thenReturnUser() throws Exception
+    void getUserByDni_whenUserExists_thenReturnUser()
     {
-        String dni = "12345678";
+        String dni = "87654321";
 
-        mockMvc.perform(get("/api/v1/admin/users/dni/{dni}", dni))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.dni").value("12345678"))
-                .andExpect(jsonPath("$.role").value("STAFF"));
+        restTestClient.get()
+                .uri("/api/v1/admin/users/dni/{dni}", dni)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.dni").isEqualTo("87654321")
+                .jsonPath("$.role").isEqualTo("USER");
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN", username = "46622977")
-    void updateUserRoleByDni_whenUserExistsAndIsNotAdmin_thenReturnUserUpdated() throws Exception
+    void getUserByDni_whenUserDoesNotExist_thenReturnNotFound()
+    {
+        String dni = "10101010";
+
+        restTestClient.get()
+                .uri("/api/v1/admin/users/dni/{dni}", dni)
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.error").isEqualTo("USERNAME_NOT_FOUND")
+                .jsonPath("$.message").isEqualTo("User not found.");
+    }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.AFTER_METHOD)
+    void updateUserRoleByDni_whenUserExistsAndIsNotAdmin_thenReturnUserUpdated()
     {
         String dni = "12345678";
         RoleRequestDTO requestDTO = new RoleRequestDTO(Role.ADMIN);
 
-        mockMvc.perform(patch("/api/v1/admin/users/dni/{dni}/role", dni)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(requestDTO)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.dni").value("12345678"))
-                .andExpect(jsonPath("$.role").value("ADMIN"));
+        restTestClient.patch()
+                .uri("/api/v1/admin/users/dni/{dni}/role", dni)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(requestDTO)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.dni").isEqualTo("12345678")
+                .jsonPath("$.role").isEqualTo("ADMIN");
     }
-
     @Test
-    @WithMockUser(roles = "ADMIN", username = "46622977")
-    void updateUserRoleByDni_whenUserDoesNotExist_thenReturnNotFound() throws Exception
-    {
-        String dni = "99999999";
-        RoleRequestDTO requestDTO = new RoleRequestDTO(Role.ADMIN);
-
-        mockMvc.perform(patch("/api/v1/admin/users/dni/{dni}/role", dni)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(requestDTO)))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.error").value("USERNAME_NOT_FOUND"))
-                .andExpect(jsonPath("$.message").value("User not found."));
-    }
-
-    @Test
-    @WithMockUser(roles = "ADMIN", username = "46622977")
-    void updateUserRoleByDni_whenDTOIsInvalid_thenReturnBadRequest() throws Exception
-    {
-        String dni = "12345678";
-        String invalidDTO = "INVALID_DTO";
-
-        mockMvc.perform(patch("/api/v1/admin/users/dni/{dni}/role", dni)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(invalidDTO))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("HTTP_MESSAGE_NOT_READABLE"))
-                .andExpect(jsonPath("$.message").value("Invalid request body."));
-    }
-
-    @Test
-    @WithMockUser(roles = "ADMIN", username = "46622977")
-    void updateUserRoleByDni_whenUserIsAdmin_thenReturnForbidden() throws Exception
+    void updateUserRoleByDni_whenUserIsAdmin_thenReturnForbidden()
     {
         String dni = "46622977";
         RoleRequestDTO requestDTO = new RoleRequestDTO(Role.USER);
 
-        mockMvc.perform(patch("/api/v1/admin/users/dni/{dni}/role", dni)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(requestDTO)))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.error").value("ACCESS_DENIED"))
-                .andExpect(jsonPath("$.message").value("You cannot perform this action on an ADMIN user."));
+        restTestClient.patch()
+                .uri("/api/v1/admin/users/dni/{dni}/role", dni)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(requestDTO)
+                .exchange()
+                .expectStatus().isForbidden()
+                .expectBody()
+                .jsonPath("$.error").isEqualTo("ACCESS_DENIED")
+                .jsonPath("$.message").isEqualTo("You cannot perform this action on an ADMIN user.");
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN", username = "46622977")
-    void deleteUserByDni_whenUserExistsAndIsNotAdmin_thenDeleteUser() throws Exception
+    void updateUserRoleByDni_whenUserDoesNotExist_thenReturnNotFound()
+    {
+        String dni = "99999999";
+        RoleRequestDTO requestDTO = new RoleRequestDTO(Role.USER);
+
+        restTestClient.patch()
+                .uri("/api/v1/admin/users/dni/{dni}/role", dni)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(requestDTO)
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.error").isEqualTo("USERNAME_NOT_FOUND")
+                .jsonPath("$.message").isEqualTo("User not found.");
+    }
+
+    @Test
+    void updateUserRoleByDni_whenRequestBodyIsMalformed_thenReturnBadRequest()
+    {
+        String dni = "12345678";
+        String invalidDTO = "INVALID_REQUEST_BODY";
+
+        restTestClient.patch()
+                .uri("/api/v1/admin/users/dni/{dni}/role", dni)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(invalidDTO)
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.error").isEqualTo("HTTP_MESSAGE_NOT_READABLE")
+                .jsonPath("$.message").isEqualTo("Invalid request body.");
+    }
+
+    @Test
+    void updateUserRoleByDni_whenRequestBodyIsEmpty_thenReturnBadRequest()
     {
         String dni = "87654321";
 
-        mockMvc.perform(delete("/api/v1/admin/users/dni/{dni}", dni))
-                .andExpect(status().isOk())
-                .andExpect(content().string("User with dni " + dni + " successfully deleted."));
+        restTestClient.patch()
+                .uri("/api/v1/admin/users/dni/{dni}/role", dni)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("{}")
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.role").isEqualTo("Role is required.");
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN", username = "46622977")
-    void deleteUserByDni_whenUserIsAdmin_thenReturnForbidden() throws Exception
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.AFTER_METHOD)
+    void deleteUserByDni_whenUserExistsAndIsNotAdmin_thenDeleteUser()
+    {
+        String dni = "87654321";
+
+        restTestClient.delete()
+                .uri("/api/v1/admin/users/dni/{dni}", dni)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(String.class)
+                .isEqualTo("User with dni " + dni + " successfully deleted.");
+    }
+
+    @Test
+    void deleteUserByDni_whenUserIsAdmin_thenReturnForbidden()
     {
         String dni = "46622977";
 
-        mockMvc.perform(delete("/api/v1/admin/users/dni/{dni}", dni))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.error").value("ACCESS_DENIED"))
-                .andExpect(jsonPath("$.message").value("You cannot perform this action on an ADMIN user."));
+        restTestClient.delete()
+                .uri("/api/v1/admin/users/dni/{dni}", dni)
+                .exchange()
+                .expectStatus().isForbidden()
+                .expectBody()
+                .jsonPath("$.error").isEqualTo("ACCESS_DENIED")
+                .jsonPath("$.message").isEqualTo("You cannot perform this action on an ADMIN user.");
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN", username = "46622977")
-    void deleteUserById_whenUserExistsAndIsNotAdmin_thenDeleteUser() throws Exception
+    void deleteUserByDni_whenUserDoesNotExist_thenReturnNotFound()
     {
-        int id = 3;
+        String dni = "10101010";
 
-        mockMvc.perform(delete("/api/v1/admin/users/{id}", id))
-                .andExpect(status().isOk())
-                .andExpect(content().string("User with id " + id + " successfully deleted."));
+        restTestClient.delete()
+                .uri("/api/v1/admin/users/dni/{dni}", dni)
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.error").isEqualTo("USERNAME_NOT_FOUND")
+                .jsonPath("$.message").isEqualTo("User not found.");
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN", username = "46622977")
-    void deleteUserById_whenUserDoesNotExist_thenReturnNotFound() throws Exception
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.AFTER_METHOD)
+    void deleteUserById_whenUserExistsAndIsNotAdmin_thenDeleteUser()
     {
-        int id = -1;
+        int id = 2;
 
-        mockMvc.perform(delete("/api/v1/admin/users/{id}", id))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.error").value("USERNAME_NOT_FOUND"))
-                .andExpect(jsonPath("$.message").value("User not found."));
+        restTestClient.delete()
+                .uri("/api/v1/admin/users/{id}", id)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(String.class)
+                .isEqualTo("User with id " + id + " successfully deleted.");
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN", username = "46622977")
-    void deleteUserById_whenUserIsAdmin_thenReturnForbidden() throws Exception
+    void deleteUserById_whenUserIsAdmin_thenReturnForbidden()
     {
         int id = 1;
 
-        mockMvc.perform(delete("/api/v1/admin/users/{id}", id))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.error").value("ACCESS_DENIED"))
-                .andExpect(jsonPath("$.message").value("You cannot delete an ADMIN user."));
+        restTestClient.delete()
+                .uri("/api/v1/admin/users/{id}", id)
+                .exchange()
+                .expectStatus().isForbidden()
+                .expectBody()
+                .jsonPath("$.error").isEqualTo("ACCESS_DENIED")
+                .jsonPath("$.message").isEqualTo("You cannot delete an ADMIN user.");
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN", username = "46622977")
-    void createMembershipByDni_whenTargetIsNotAdminOrStaff_thenReturnMembership() throws Exception
+    void deleteUserById_whenUserDoesNotExist_thenReturnNotFound()
+    {
+        int id = -1;
+
+        restTestClient.delete()
+                .uri("/api/v1/admin/users/{id}", id)
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.error").isEqualTo("USERNAME_NOT_FOUND")
+                .jsonPath("$.message").isEqualTo("User not found.");
+    }
+
+    @Test
+    void createMembershipByDni_whenUserIsNotAdminOrStaff_thenReturnMembership()
     {
         String dni = "87654321";
         MembershipRequestDTO requestDTO = new MembershipRequestDTO(
@@ -218,242 +296,342 @@ public class AdminControllerTest
                 PaymentMethod.CARD
         );
 
-        mockMvc.perform(post("/api/v1/admin/users/dni/{dni}/memberships", dni)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(requestDTO)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.user_dni").value("87654321"))
-                .andExpect(jsonPath("$.type").value("ANNUALLY"))
-                .andExpect(jsonPath("$.payment_method").value("CARD"))
-                .andExpect(jsonPath("$.created_by").value("46622977"));
+        restTestClient.post()
+                .uri("/api/v1/admin/users/dni/{dni}/memberships", dni)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(requestDTO)
+                .exchange()
+                .expectStatus().isCreated()
+                .expectBody()
+                .jsonPath("$.user_dni").isEqualTo("87654321")
+                .jsonPath("$.type").isEqualTo("ANNUALLY")
+                .jsonPath("$.payment_method").isEqualTo("CARD");
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN", username = "46622977")
-    void createMembershipByDni_whenUserIsAdminOrStaff_thenReturnConflict() throws Exception
+    void createMembershipByDni_whenUserIsAdminOrStaff_thenReturnConflict()
     {
-        String dni = "12345678";
+        String dni = "46622977";
         MembershipRequestDTO requestDTO = new MembershipRequestDTO(
-                MembershipType.MONTHLY,
-                PaymentMethod.CASH
+                MembershipType.ANNUALLY,
+                PaymentMethod.CARD
         );
 
-        mockMvc.perform(post("/api/v1/admin/users/dni/{dni}/memberships", dni)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(requestDTO)))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error").value("INVALID_MEMBERSHIP_ASSIGNMENT"))
-                .andExpect(jsonPath("$.message").value("Only users with role USER can have a membership."));
+        restTestClient.post()
+                .uri("/api/v1/admin/users/dni/{dni}/memberships", dni)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(requestDTO)
+                .exchange()
+                .expectStatus().isEqualTo(HttpStatus.CONFLICT)
+                .expectBody()
+                .jsonPath("$.error").isEqualTo("INVALID_MEMBERSHIP_ASSIGNMENT")
+                .jsonPath("$.message").isEqualTo("Only users with role USER can have a membership.");
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN", username = "46622977")
-    void createMembershipByDni_whenDTOIsInvalid_thenReturnBadRequest() throws Exception
+    void createMembershipByDni_whenRequestBodyIsMalformed_thenReturnBadRequest()
     {
-        String dni = "12345678";
-        String invalidDTO = "INVALID_DTO";
+        String dni = "87654321";
+        String invalidDTO = "INVALID_REQUEST_BODY";
 
-        mockMvc.perform(post("/api/v1/admin/users/dni/{dni}/memberships", dni)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(invalidDTO)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("HTTP_MESSAGE_NOT_READABLE"))
-                .andExpect(jsonPath("$.message").value("Invalid request body."));
+        restTestClient.post()
+                .uri("/api/v1/admin/users/dni/{dni}/memberships", dni)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(invalidDTO)
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.error").isEqualTo("HTTP_MESSAGE_NOT_READABLE")
+                .jsonPath("$.message").isEqualTo("Invalid request body.");
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN", username = "46622977")
-    void getMembershipsByDate_whenMembershipsExist_thenReturnMembershipList() throws Exception
-    {
-        mockMvc.perform(get("/api/v1/admin/users/memberships/date")
-                        .param("start", "2025-01-01")
-                        .param("end", "2026-01-01"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(2));
-    }
-
-    @Test
-    @WithMockUser(roles = "ADMIN", username = "46622977")
-    void getMembershipsByDate_whenMembershipsDoNotExist_thenReturnEmptyList() throws Exception
-    {
-        mockMvc.perform(get("/api/v1/admin/users/memberships/date")
-                        .param("start", "2000-01-01")
-                        .param("end", "2001-01-01"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(0));
-    }
-
-    @Test
-    @WithMockUser(roles = "ADMIN", username = "46622977")
-    void getMembershipsByDate_whenDateIsInvalid_thenReturnBadRequest() throws Exception
-    {
-        mockMvc.perform(get("/api/v1/admin/users/memberships/date")
-                        .param("start", "invalid-param")
-                        .param("end", "invalid-param"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("METHOD_ARGUMENT_MISMATCH"))
-                .andExpect(jsonPath("$.message").value("Invalid URL parameter type."));
-    }
-
-    @Test
-    @WithMockUser(roles = "ADMIN", username = "46622977")
-    void getMembershipsByDni_whenMembershipsExist_thenReturnMembershipsList() throws Exception
+    void createMembershipByDni_whenRequestBodyIsEmpty_thenReturnBadRequest()
     {
         String dni = "87654321";
 
-        mockMvc.perform(get("/api/v1/admin/users/dni/{dni}/memberships", dni))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(2))
-                .andExpect(jsonPath("$[0].user_dni").value("87654321"))
-                .andExpect(jsonPath("$[1].user_dni").value("87654321"));
+        restTestClient.post()
+                .uri("/api/v1/admin/users/dni/{dni}/memberships", dni)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("{}")
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.type").isEqualTo("Membership type is required.")
+                .jsonPath("$.paymentMethod").isEqualTo("Payment method is required.");
+    }
+
+
+
+    @Test
+    void getMembershipsByPaymentDateBetween_whenMembershipsExist_thenReturnMembershipsList()
+    {
+        restTestClient.get()
+                .uri("/api/v1/admin/users/memberships/date?start=2025-01-01&end=2026-01-01")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.length()").isEqualTo(2);
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN", username = "46622977")
-    void getLastMembershipByDni_whenMembershipExists_thenReturnMembership() throws Exception
+    void getMembershipsByPaymentDateBetween_whenMembershipsDoNotExist_thenReturnEmptyList()
+    {
+        restTestClient.get()
+                .uri("/api/v1/admin/users/memberships/date?start=2020-01-01&end=2021-01-01")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.length()").isEqualTo(0);
+    }
+
+    @Test
+    void getMembershipsByPaymentDateBetween_whenDatesAreInvalid_thenReturnBadRequest()
+    {
+        restTestClient.get()
+                .uri("/api/v1/admin/users/memberships/date?start=start&end=end")
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.error").isEqualTo("METHOD_ARGUMENT_MISMATCH")
+                .jsonPath("$.message").isEqualTo("Invalid URL parameter type.");
+    }
+
+    @Test
+    void getMembershipsByDni_whenMembershipsExist_thenReturnMemberships()
     {
         String dni = "87654321";
 
-        mockMvc.perform(get("/api/v1/admin/users/dni/{dni}/memberships/last", dni))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.user_dni").value("87654321"))
-                .andExpect(jsonPath("$.payment_date").value("2025-01-01"))
-                .andExpect(jsonPath("$.next_payment_date").value("2099-01-01"));
+        restTestClient.get()
+                .uri("/api/v1/admin/users/dni/{dni}/memberships", dni)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.length()").isEqualTo(2)
+                .jsonPath("$[0].user_dni").isEqualTo("87654321")
+                .jsonPath("$[1].user_dni").isEqualTo("87654321");
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN", username = "46622977")
-    void getActiveMembership_whenActiveMembershipsExist_thenReturnMembershipList() throws Exception
+    void getMembershipsByDni_whenMembershipsDoNotExist_thenReturnNotFound()
     {
-        // The active membership expires on 2099-01-01, ensuring it is always active.
-        mockMvc.perform(get("/api/v1/admin/users/memberships/active"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].status").value("ACTIVE"))
-                .andExpect(jsonPath("$[0].next_payment_date").value("2099-01-01"))
-                .andExpect(jsonPath("$[0].created_by").value("46622977"));
+        String dni = "10101010";
+
+        restTestClient.get()
+                .uri("/api/v1/admin/users/dni/{dni}/memberships", dni)
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.error").isEqualTo("MEMBERSHIP_NOT_FOUND")
+                .jsonPath("$.message").isEqualTo("Memberships not found.");
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN", username = "46622977")
-    void getActiveMemberships_whenActiveMembershipsDoNotExist_thenReturnEmptyList() throws Exception
+    void getLastMembershipByDni_whenMembershipExists_thenReturnMembership()
     {
-        // Delete the unique active membership
+        String dni = "99999999";
+
+        restTestClient.get()
+                .uri("/api/v1/admin/users/dni/{dni}/memberships/last", dni)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.user_dni").isEqualTo("99999999")
+                .jsonPath("$.payment_date").isEqualTo("2025-01-01");
+    }
+
+    @Test
+    void getLastMembershipsByDni_whenMembershipDoesNotExist_thenReturnNotFound()
+    {
+        String dni = "10101010";
+
+        restTestClient.get()
+                .uri("/api/v1/admin/users/dni/{dni}/memberships/last", dni)
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.error").isEqualTo("MEMBERSHIP_NOT_FOUND")
+                .jsonPath("$.message").isEqualTo("Membership not found.");
+    }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+    void getActiveMemberships_whenActiveMembershipsExist_thenReturnActiveMembershipsList()
+    {
+        restTestClient.get()
+                .uri("/api/v1/admin/users/memberships/active")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.length()").isEqualTo(1)
+                .jsonPath("$[0].next_payment_date").isEqualTo("2099-01-01");
+    }
+
+    @Test
+    void getActiveMemberships_whenActiveMembershipsDoNotExist_thenReturnEmptyList()
+    {
         membershipRepository.deleteById(2);
 
-        mockMvc.perform(get("/api/v1/admin/users/memberships/active"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(0));
+        restTestClient.get()
+                .uri("/api/v1/admin/users/memberships/active")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.length()").isEqualTo(0);
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN", username = "46622977")
-    void updateMembershipStatusById_whenMembershipExists_thenReturnMembershipUpdated() throws Exception
+    void updateMembershipStatusById_whenMembershipExists_thenReturnMembershipUpdated()
     {
-        int id = 1;
+        int id = 3;
         MembershipStatusRequestDTO requestDTO = new MembershipStatusRequestDTO(MembershipStatus.ACTIVE);
 
-        mockMvc.perform(patch("/api/v1/admin/users/memberships/{id}/status", id)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(requestDTO)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(1))
-                .andExpect(jsonPath("$.status").value("ACTIVE"));
+        restTestClient.patch()
+                .uri("/api/v1/admin/users/memberships/{id}/status", id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(requestDTO)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.id").isEqualTo("3")
+                .jsonPath("$.status").isEqualTo("ACTIVE");
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN", username = "46622977")
-    void updateMembershipStatusById_whenMembershipDoesNotExist_thenReturnNotFound() throws Exception
+    void updateMembershipStatusById_whenMembershipDoesNotExist_thenReturnNotFound()
     {
         int id = -1;
         MembershipStatusRequestDTO requestDTO = new MembershipStatusRequestDTO(MembershipStatus.ACTIVE);
 
-        mockMvc.perform(patch("/api/v1/admin/users/memberships/{id}/status", id)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(requestDTO)))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.error").value("MEMBERSHIP_NOT_FOUND"))
-                .andExpect(jsonPath("$.message").value("Membership not found."));
+        restTestClient.patch()
+                .uri("/api/v1/admin/users/memberships/{id}/status", id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(requestDTO)
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.error").isEqualTo("MEMBERSHIP_NOT_FOUND")
+                .jsonPath("$.message").isEqualTo("Membership not found.");
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN", username = "46622977")
-    void updateMembershipStatusById_whenDTOIsInvalid_thenReturnBadRequest() throws Exception
+    void updateMembershipStatusById_whenRequestBodyIsMalformed_thenReturnBadRequest()
     {
-        int id = 1;
-        String invalidDTO = "INVALID_DTO";
+        int id = 3;
+        String invalidDTO = "INVALID_REQUEST_BODY";
 
-        mockMvc.perform(patch("/api/v1/admin/users/memberships/{id}/status", id)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(invalidDTO))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("HTTP_MESSAGE_NOT_READABLE"))
-                .andExpect(jsonPath("$.message").value("Invalid request body."));
+        restTestClient.patch()
+                .uri("/api/v1/admin/users/memberships/{id}/status", id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(invalidDTO)
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.error").isEqualTo("HTTP_MESSAGE_NOT_READABLE")
+                .jsonPath("$.message").isEqualTo("Invalid request body.");
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN", username = "46622977")
-    void deleteMembershipsByDni_whenMembershipsExist_thenDeleteMemberships() throws Exception
+    void updateMembershipStatusById_whenRequestBodyIsEmpty_thenReturnBadRequest()
+    {
+        int id = 3;
+
+        restTestClient.patch()
+                .uri("/api/v1/admin/users/memberships/{id}/status", id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("{}")
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.status").isEqualTo("Membership status is required.");
+    }
+
+    @Test
+    void deleteMembershipsByDni_whenMembershipsExist_thenDeleteMemberships()
     {
         String dni = "87654321";
 
-        mockMvc.perform(delete("/api/v1/admin/users/dni/{dni}/memberships", dni))
-                .andExpect(status().isOk())
-                .andExpect(content().string("Memberships of the user with dni " + dni + " successfully deleted."));
+        restTestClient.delete()
+                .uri("/api/v1/admin/users/dni/{dni}/memberships", dni)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(String.class)
+                .isEqualTo("Memberships of the user with dni " + dni + " successfully deleted.");
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN", username = "46622977")
-    void deleteMembershipById_whenMembershipExists_thenDeleteMembership() throws Exception
+    void deleteMembershipsByDni_whenMembershipsDoNotExist_thenReturnNotFound()
+    {
+        String dni = "10101010";
+
+        restTestClient.delete()
+                .uri("/api/v1/admin/users/dni/{dni}/memberships", dni)
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.error").isEqualTo("MEMBERSHIP_NOT_FOUND")
+                .jsonPath("$.message").isEqualTo("Memberships not found.");
+    }
+
+    @Test
+    void deleteMembershipById_whenMembershipExists_thenDeleteMembership()
     {
         int id = 1;
 
-        mockMvc.perform(delete("/api/v1/admin/users/memberships/{id}", id))
-                .andExpect(status().isOk())
-                .andExpect(content().string("Membership with id " + id + " successfully deleted."));
+        restTestClient.delete()
+                .uri("/api/v1/admin/users/memberships/{id}", id)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(String.class)
+                .isEqualTo("Membership with id " + id + " successfully deleted.");
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN", username = "46622977")
-    void deleteMembershipById_whenMembershipDoesNotExist_thenReturnNotFound() throws Exception
+    void deleteMembershipById_whenMembershipDoesNotExist_thenReturnNotFound()
     {
         int id = -1;
 
-        mockMvc.perform(delete("/api/v1/admin/users/memberships/{id}", id))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.error").value("MEMBERSHIP_NOT_FOUND"))
-                .andExpect(jsonPath("$.message").value("Membership not found."));
+        restTestClient.delete()
+                .uri("/api/v1/admin/users/memberships/{id}", id)
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.error").isEqualTo("MEMBERSHIP_NOT_FOUND")
+                .jsonPath("$.message").isEqualTo("Membership not found.");
     }
 
     @Test
-    void accessAdminUrls_whenAdminIsNotAuthenticated_thenReturnUnauthorized() throws Exception
+    void accessAdminUrls_whenAdminIsNotAuthenticated_thenReturnUnauthorized()
     {
-        // With any HTTP method, this URL is unauthorized when the ADMIN is not logged in.
-        mockMvc.perform(get("/api/v1/admin/anything"))
-                .andExpect(status().isUnauthorized());
+        // Create a new RestTestClient without any cookies (i.e. not authenticated)
+        RestTestClient clientWithoutCookie = RestTestClient.bindToServer()
+                .baseUrl("http://localhost:" + port)
+                .build();
+
+        // We can test with any HTTP method; it always returns unauthorized
+        clientWithoutCookie
+                .get()
+                .uri("/api/v1/admin")
+                .exchange()
+                .expectStatus().isUnauthorized();
     }
 
     @Test
-    @WithMockUser(roles = "STAFF", username = "12345678")
-    void accessAdminUrls_whenUserDoesNotHaveAdminRole_thenReturnForbidden() throws Exception
+    void accessAdminUrls_whenUserDoesNotHaveAdminRole_thenReturnForbidden()
     {
-        // With any HTTP method, this URL is forbidden for STAFF and USER roles.
-        mockMvc.perform(get("/api/v1/admin/anything"))
-                .andExpect(status().isForbidden());
-    }
+        UserEntity user = userRepository.findById(3)
+                .orElse(null);
 
-    @ParameterizedTest
-    @CsvSource({
-            "'', GET",
-            "'', DELETE",
-            "/memberships, GET",
-            "/memberships, DELETE",
-            "/memberships/last, GET"
-    })
-    @WithMockUser(roles = "ADMIN", username = "46622977")
-    void methodEntityByDni_whenUsersOrMembershipsDoNotExist_thenReturnNotFound(String url, HttpMethod method) throws Exception
-    {
-        mockMvc.perform(request(method, "/api/v1/admin/users/dni/10101010" + url))
-                .andExpect(status().isNotFound());
+        ResponseCookie accessTokenCookie = jwtService.generateAccessTokenCookie(user);
+
+        RestTestClient clientWithUserCookie = RestTestClient.bindToServer()
+                .baseUrl("http://localhost:" + port)
+                .defaultCookie("access-token", accessTokenCookie.getValue())
+                .build();
+
+        clientWithUserCookie.get()
+                .uri("/api/v1/admin")
+                .exchange()
+                .expectStatus().isForbidden();
     }
 }
