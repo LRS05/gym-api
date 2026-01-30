@@ -38,7 +38,7 @@ public class UserService
         UserEntity user = findCurrentUserOrThrow();
         if (!passwordEncoder.matches(requestDTO.password(), user.getPassword()))
         {
-            throw new InvalidPasswordException("Invalid password.");
+            throw new InvalidPasswordException("Incorrect password.");
         }
 
         userRepository.delete(user);
