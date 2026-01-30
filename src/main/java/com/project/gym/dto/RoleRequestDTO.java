@@ -5,6 +5,6 @@ import jakarta.validation.constraints.NotNull;
 
 public record RoleRequestDTO(
 
-        @NotNull(message = "Invalid role type.")
+        @NotNull(message = "Role is required.")
         Role role
 ){}
