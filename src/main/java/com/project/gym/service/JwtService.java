@@ -54,11 +54,6 @@ public class JwtService
 
     public String getTokenFromCookies(Cookie[] cookies, TokenType tokenType)
     {
-        if (cookies == null)
-        {
-            throw new CookieNotFoundException("Cookies not found.");
-        }
-
         // Throws exception if the token is not found.
         return findCookieToken(cookies, tokenType);
     }
@@ -74,6 +69,14 @@ public class JwtService
         {
             return false;
         }
+    }
+
+    public boolean existsTokenCookie(TokenType tokenType, Cookie[] cookies)
+    {
+        if (cookies == null) return false;
+
+        return Arrays.stream(cookies)
+                .anyMatch(c -> c.getName().equals(tokenType.name().toLowerCase() + "-token"));
     }
 
     public String getSubject(String token)
@@ -133,11 +136,14 @@ public class JwtService
 
     private String findCookieToken(Cookie[] cookies, TokenType tokenType)
     {
+        if (cookies == null) throw new CookieNotFoundException("Cookies not found.");
+
         return Arrays.stream(cookies)
                 .filter(c -> c.getName().equals(tokenType.name().toLowerCase() + "-token"))
                 .map(Cookie::getValue)
+                .filter(token -> !token.isBlank())
                 .findFirst()
-                .orElseThrow(() -> new CookieNotFoundException(tokenType.name() + " token cookie not found."));
+                .orElseThrow(() -> new CookieNotFoundException(tokenType + " token cookie not found."));
     }
 
     private SecretKey secretKey()
