@@ -16,8 +16,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -38,9 +36,6 @@ public class AuthService
 
     public Map<String, ResponseCookie> register(RegisterRequestDTO requestDTO)
     {
-        // If the user is already authenticated, throw an exception.
-        validateUserIsNotAuthenticated();
-
         if (userRepository.existsByDni(requestDTO.dni()))
         {
             throw new UserAlreadyExistsException("User is already registered.");
@@ -65,10 +60,7 @@ public class AuthService
 
     public Map<String, ResponseCookie> authenticate(AuthRequestDTO requestDTO)
     {
-        // If the user is already authenticated, throw an exception.
-        validateUserIsNotAuthenticated();
-
-        // Can throws BadCredentialsException or UsernameNotFoundException
+        // Can throw BadCredentialsException or UsernameNotFoundException
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(requestDTO.dni(), requestDTO.password())
         );
@@ -111,14 +103,5 @@ public class AuthService
     {
         return userRepository.findByDni(dni)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found."));
-    }
-
-    private void validateUserIsNotAuthenticated()
-    {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.isAuthenticated())
-        {
-            throw new UserAlreadyAuthenticatedException("You are already logged in.");
-        }
     }
 }
