@@ -3,6 +3,7 @@ package com.project.gym.controller;
 import com.project.gym.dto.*;
 import com.project.gym.service.MembershipService;
 import com.project.gym.service.UserService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import java.security.Principal;
 import java.util.List;
 
+@Tag(name = "1 - User")
 @Slf4j
 @RestController
 @RequiredArgsConstructor

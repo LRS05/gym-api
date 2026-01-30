@@ -3,6 +3,7 @@ package com.project.gym.controller;
 import com.project.gym.dto.AuthRequestDTO;
 import com.project.gym.dto.RegisterRequestDTO;
 import com.project.gym.service.AuthService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
+@Tag(name = "0 - Authentication", description = "Register, Login, Refresh and Logout")
 @Slf4j
 @RestController
 @RequiredArgsConstructor
@@ -36,7 +38,7 @@ public class AuthController
         return ResponseEntity.status(HttpStatus.CREATED)
                 .header(HttpHeaders.SET_COOKIE, cookies.get("access-token").toString())
                 .header(HttpHeaders.SET_COOKIE, cookies.get("refresh-token").toString())
-                .body("Register successful");
+                .body("Account created successfully");
     }
 
     @PostMapping("/login")
