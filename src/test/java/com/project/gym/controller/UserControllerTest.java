@@ -182,6 +182,7 @@ public class UserControllerTest
     }
 
     @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
     void getMemberships_whenMembershipsExist_thenReturnMembershipsList()
     {
         restTestClient.get()
