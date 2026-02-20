@@ -8,11 +8,9 @@ import com.project.gym.entity.enums.Role;
 import com.project.gym.entity.enums.TokenType;
 import com.project.gym.exception.*;
 import com.project.gym.repository.UserRepository;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.Cookie;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -71,13 +69,13 @@ public class AuthService
         return generateTokenCookies(user);
     }
 
-    public ResponseCookie refresh(HttpServletRequest request)
+    public ResponseCookie refresh(Cookie[] cookies)
     {
         // Throws exception if cookies == null or token cookie not found.
-        String refreshToken = jwtService.getTokenFromCookies(request.getCookies(), TokenType.REFRESH);
+        String refreshToken = jwtService.getTokenFromCookies(cookies, TokenType.REFRESH);
 
         UserEntity user = findUserByDniOrThrow(jwtService.getSubject(refreshToken));
-        if (!jwtService.isTokenValid(refreshToken, user) || !jwtService.getTokenType(refreshToken).equals("refresh"))
+        if (!jwtService.getTokenType(refreshToken).equals("refresh") || !jwtService.isTokenValid(refreshToken, user))
         {
             throw new InvalidTokenException("Invalid or expired refresh token.");
         }
@@ -85,10 +83,12 @@ public class AuthService
         return jwtService.generateAccessTokenCookie(user);
     }
 
-    public void logout(HttpServletResponse response)
+    public Map<String, ResponseCookie> emptyCookies()
     {
-        response.addHeader(HttpHeaders.SET_COOKIE, jwtService.emptyCookie("access-token").toString());
-        response.addHeader(HttpHeaders.SET_COOKIE, jwtService.emptyCookie("refresh-token").toString());
+        return Map.of(
+                "access-token", jwtService.emptyCookie("access-token"),
+                "refresh-token", jwtService.emptyCookie("refresh-token")
+        );
     }
 
     private Map<String, ResponseCookie> generateTokenCookies(UserEntity user)

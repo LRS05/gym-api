@@ -5,7 +5,6 @@ import com.project.gym.dto.RegisterRequestDTO;
 import com.project.gym.service.AuthService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -58,17 +57,22 @@ public class AuthController
     {
         log.debug("Attempting to refresh access token");
 
-        ResponseCookie newAccessTokenCookie = authService.refresh(request);
+        ResponseCookie newAccessTokenCookie = authService.refresh(request.getCookies());
         return ResponseEntity.noContent()
                 .header(HttpHeaders.SET_COOKIE, newAccessTokenCookie.toString())
                 .build();
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<String> logout(HttpServletResponse response)
+    public ResponseEntity<String> logout()
     {
         log.debug("Attempting to logout");
-        authService.logout(response);
-        return ResponseEntity.ok("Logout successful");
+
+        Map<String, ResponseCookie> emptyCookies = authService.emptyCookies();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, emptyCookies.get("access-token").toString())
+                .header(HttpHeaders.SET_COOKIE, emptyCookies.get("refresh-token").toString())
+                .body("Logout successful");
     }
 }

@@ -10,14 +10,12 @@ import com.project.gym.exception.*;
 import com.project.gym.repository.UserRepository;
 import com.project.gym.factory.UserFactory;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -49,9 +47,6 @@ public class AuthServiceTest
 
     @Mock
     private HttpServletRequest httpServletRequest;
-
-    @Mock
-    private HttpServletResponse httpServletResponse;
 
     @Mock
     private CustomMetrics customMetrics;
@@ -209,7 +204,7 @@ public class AuthServiceTest
         when(jwtService.getTokenType(refreshToken)).thenReturn("refresh");
         when(jwtService.generateAccessTokenCookie(user)).thenReturn(expectedAccessTokenCookie);
 
-        ResponseCookie result = authService.refresh(httpServletRequest);
+        ResponseCookie result = authService.refresh(httpServletRequest.getCookies());
 
         // Then
         assertEquals(expectedAccessTokenCookie, result);
@@ -231,7 +226,7 @@ public class AuthServiceTest
                 .thenThrow(CookieNotFoundException.class);
 
         // Then
-        assertThrows(CookieNotFoundException.class, () -> authService.refresh(httpServletRequest));
+        assertThrows(CookieNotFoundException.class, () -> authService.refresh(httpServletRequest.getCookies()));
 
         verify(jwtService).getTokenFromCookies(null, TokenType.REFRESH);
     }
@@ -244,7 +239,7 @@ public class AuthServiceTest
                 .thenThrow(CookieNotFoundException.class);
 
         // Then
-        assertThrows(CookieNotFoundException.class, () -> authService.refresh(httpServletRequest));
+        assertThrows(CookieNotFoundException.class, () -> authService.refresh(httpServletRequest.getCookies()));
 
         verify(jwtService).getTokenFromCookies(httpServletRequest.getCookies(), TokenType.REFRESH);
     }
@@ -263,7 +258,7 @@ public class AuthServiceTest
         when(userRepository.findByDni(dni)).thenReturn(Optional.empty());
 
         // Then
-        assertThrows(UsernameNotFoundException.class, () -> authService.refresh(httpServletRequest));
+        assertThrows(UsernameNotFoundException.class, () -> authService.refresh(httpServletRequest.getCookies()));
 
         verify(jwtService).getTokenFromCookies(httpServletRequest.getCookies(), TokenType.REFRESH);
         verify(jwtService).getSubject(refreshToken);
@@ -282,10 +277,11 @@ public class AuthServiceTest
         when(jwtService.getTokenFromCookies(httpServletRequest.getCookies(), TokenType.REFRESH)).thenReturn(refreshToken);
         when(jwtService.getSubject(refreshToken)).thenReturn(dni);
         when(userRepository.findByDni(dni)).thenReturn(Optional.of(user));
+        when(jwtService.getTokenType(refreshToken)).thenReturn("refresh");
         when(jwtService.isTokenValid(refreshToken, user)).thenReturn(false);
 
         // Then
-        assertThrows(InvalidTokenException.class, () -> authService.refresh(httpServletRequest));
+        assertThrows(InvalidTokenException.class, () -> authService.refresh(httpServletRequest.getCookies()));
 
         verify(jwtService).getTokenFromCookies(httpServletRequest.getCookies(), TokenType.REFRESH);
         verify(jwtService).getSubject(refreshToken);
@@ -304,13 +300,10 @@ public class AuthServiceTest
         when(jwtService.emptyCookie("access-token")).thenReturn(expectedEmptyAccessTokenCookie);
         when(jwtService.emptyCookie("refresh-token")).thenReturn(expectedEmptyRefreshTokenCookie);
 
-        authService.logout(httpServletResponse);
+        authService.emptyCookies();
 
         // Then
         verify(jwtService).emptyCookie("access-token");
         verify(jwtService).emptyCookie("refresh-token");
-
-        verify(httpServletResponse).addHeader(HttpHeaders.SET_COOKIE, expectedEmptyAccessTokenCookie.toString());
-        verify(httpServletResponse).addHeader(HttpHeaders.SET_COOKIE, expectedEmptyRefreshTokenCookie.toString());
     }
 }
