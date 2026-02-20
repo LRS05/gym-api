@@ -66,7 +66,7 @@ public class StaffController
     public ResponseEntity<MembershipResponseDTO> createMembership(@PathVariable String dni, @Valid @RequestBody MembershipRequestDTO requestDTO)
     {
         log.info("Attempting to create a membership for the user with dni={}, type={}, payment method={}", dni, requestDTO.type(), requestDTO.paymentMethod());
-        return ResponseEntity.status(HttpStatus.CREATED).body(membershipService.createMembershipByDni(dni, requestDTO));
+        return ResponseEntity.status(HttpStatus.CREATED).body(membershipService.createByDni(dni, requestDTO));
     }
 
     @GetMapping("/users/memberships/{id}")
