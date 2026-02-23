@@ -22,6 +22,9 @@ public record UserResponseDTO(
         @JsonProperty("last_name")
         String lastName,
 
+        @JsonProperty("phone_number")
+        String phoneNumber,
+
         @JsonProperty("creation_date")
         LocalDate creationDate
 ) {
