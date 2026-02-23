@@ -8,32 +8,44 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Component
 public class CustomMetrics
 {
-    private final AtomicInteger totalUsers = new AtomicInteger(0);
-    private final AtomicInteger activeMemberships = new AtomicInteger(0);
+    private final AtomicInteger gymTotalUsers = new AtomicInteger(0);
+    private final AtomicInteger gymTotalMemberships = new AtomicInteger(0);
+    private final AtomicInteger gymTotalActiveMemberships = new AtomicInteger(0);
 
     public CustomMetrics(MeterRegistry meterRegistry)
     {
-        meterRegistry.gauge("gym.total.users", totalUsers);
-        meterRegistry.gauge("gym.active.memberships", activeMemberships);
+        meterRegistry.gauge("gym.total.users", gymTotalUsers);
+        meterRegistry.gauge("gym.total.memberships", gymTotalMemberships);
+        meterRegistry.gauge("gym.active.memberships", gymTotalActiveMemberships);
     }
 
     public void incrementUsers()
     {
-        totalUsers.incrementAndGet();
+        gymTotalUsers.incrementAndGet();
     }
 
     public void decrementUsers()
     {
-        totalUsers.decrementAndGet();
+        gymTotalUsers.decrementAndGet();
+    }
+
+    public void incrementMemberships()
+    {
+        gymTotalMemberships.incrementAndGet();
+    }
+
+    public void decrementMemberships()
+    {
+        gymTotalMemberships.decrementAndGet();
     }
 
     public void incrementActiveMemberships()
     {
-        activeMemberships.incrementAndGet();
+        gymTotalActiveMemberships.incrementAndGet();
     }
 
     public void decrementActiveMemberships()
     {
-        activeMemberships.decrementAndGet();
+        gymTotalActiveMemberships.decrementAndGet();
     }
 }
