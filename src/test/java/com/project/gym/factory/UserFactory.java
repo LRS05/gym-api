@@ -78,6 +78,7 @@ public class UserFactory
                 user.getDni(),
                 user.getFirstName(),
                 user.getLastName(),
+                user.getPhoneNumber(),
                 user.getCreationDate()
         );
     }
