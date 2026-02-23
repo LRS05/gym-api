@@ -72,7 +72,7 @@ public class StaffController
     @GetMapping("/users/memberships/{id}")
     public ResponseEntity<MembershipResponseDTO> getMembershipById(@PathVariable int id)
     {
-        return ResponseEntity.ok(membershipService.getMembershipById(id));
+        return ResponseEntity.ok(membershipService.getById(id));
     }
 
     @GetMapping("/users/memberships/date")
@@ -90,7 +90,7 @@ public class StaffController
     @GetMapping("/users/dni/{dni}/memberships/last")
     public ResponseEntity<MembershipResponseDTO> getLastMembershipByDni(@PathVariable String dni)
     {
-        return ResponseEntity.ok(membershipService.getLastMembershipByDni(dni));
+        return ResponseEntity.ok(membershipService.getLastByDni(dni));
     }
 
     @GetMapping("/users/memberships/active")
@@ -103,6 +103,6 @@ public class StaffController
     public ResponseEntity<MembershipResponseDTO> updateMembershipStatusById(@PathVariable int id, @Valid @RequestBody MembershipStatusRequestDTO requestDTO)
     {
         log.info("Attempting to update membership with id={} to {}", id, requestDTO.status());
-        return ResponseEntity.ok(membershipService.updateMembershipStatusById(id, requestDTO));
+        return ResponseEntity.ok(membershipService.updateStatusById(id, requestDTO));
     }
 }
