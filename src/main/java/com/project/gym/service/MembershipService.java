@@ -6,6 +6,7 @@ import com.project.gym.dto.MembershipResponseDTO;
 import com.project.gym.dto.MembershipStatusRequestDTO;
 import com.project.gym.entity.MembershipEntity;
 import com.project.gym.entity.UserEntity;
+import com.project.gym.entity.enums.MembershipMessageType;
 import com.project.gym.entity.enums.MembershipStatus;
 import com.project.gym.entity.enums.Role;
 import com.project.gym.exception.InvalidMembershipAssignmentException;
@@ -33,53 +34,19 @@ public class MembershipService
     private final MembershipMapper membershipMapper;
     private final CustomMetrics customMetrics;
 
-    public MembershipResponseDTO createMembershipByDni(String dni, MembershipRequestDTO requestDTO)
+    public MembershipResponseDTO createByDni(String dni, MembershipRequestDTO requestDTO)
     {
         MembershipEntity savedMembership = membershipRepository.save(
                 buildMembership(dni, requestDTO)
         );
 
-        incrementActiveMembershipsMetrics();
-        sendMembershipCreatedMessage(savedMembership);
+        customMetrics.incrementMemberships();
+        customMetrics.incrementActiveMemberships();
+
+        sendWhatsAppMessage(savedMembership.getUser(), savedMembership, MembershipMessageType.CREATED);
 
         log.info("Created a new membership for the user with dni={}, type={} and payment method={}", dni, requestDTO.type(), requestDTO.paymentMethod());
         return membershipMapper.entityToDTO(savedMembership);
-    }
-
-    public List<MembershipResponseDTO> getAllByDate(LocalDate start, LocalDate end)
-    {
-        return membershipMapper.entityToDTO(
-                membershipRepository.findAllByPaymentDateBetween(start, end)
-        );
-    }
-
-    public MembershipResponseDTO getMembershipById(int id)
-    {
-        return membershipMapper.entityToDTO(
-                membershipRepository.findById(id)
-                        .orElseThrow(() -> new MembershipNotFoundException("Membership not found."))
-        );
-    }
-
-    public List<MembershipResponseDTO> getAllByDni(String dni)
-    {
-        List<MembershipEntity> memberships = findAllByDniOrThrow(dni);
-        return membershipMapper.entityToDTO(memberships);
-    }
-
-    public MembershipResponseDTO getLastMembershipByDni(String dni)
-    {
-        return membershipMapper.entityToDTO(
-                membershipRepository.findLastByUserDni(dni)
-                        .orElseThrow(() -> new MembershipNotFoundException("Membership not found."))
-        );
-    }
-
-    public List<MembershipResponseDTO> getAllActive()
-    {
-        return membershipMapper.entityToDTO(
-                membershipRepository.findAllByStatus(MembershipStatus.ACTIVE)
-        );
     }
 
     public MembershipResponseDTO updateMembershipStatusById(int id, MembershipStatusRequestDTO requestDTO)
@@ -93,9 +60,8 @@ public class MembershipService
             return membershipMapper.entityToDTO(membership);
         }
 
-        membership.setStatus(requestDTO.status());
+        updateMembershipStatus(membership, requestDTO.status());
         MembershipEntity updatedMembership = membershipRepository.save(membership);
-        updateActiveMembershipMetrics(requestDTO.status());
 
         log.info("Updated membership with id={} to {}", id, requestDTO.status());
         return membershipMapper.entityToDTO(updatedMembership);
@@ -105,22 +71,57 @@ public class MembershipService
     {
         MembershipEntity membership = membershipRepository.findById(id)
                 .orElseThrow(() -> new MembershipNotFoundException("Membership not found."));
-        membershipRepository.delete(membership);
-        decrementActiveMembershipMetrics(membership);
+
+        // Deletes the membership and updates CustomMetrics counters.
+        deleteMembership(membership);
+
         log.info("Deleted membership with id={}", id);
     }
 
     public void deleteAllByDni(String dni)
     {
-        List<MembershipEntity> memberships = membershipRepository.findAllByUserDni(dni);
-        if (memberships.isEmpty())
-        {
-            throw new MembershipNotFoundException("Memberships not found.");
-        }
+        List<MembershipEntity> memberships = findAllByDniOrThrow(dni);
 
-        membershipRepository.deleteAll(memberships);
-        memberships.forEach(this::decrementActiveMembershipMetrics);
-        log.info("Deleted {} memberships with user_dni={}",memberships.size(), dni);
+        // Delete the memberships and update CustomMetrics counters.
+        memberships.forEach(this::deleteMembership);
+
+        log.info("Deleted {} memberships of the user with dni={}",memberships.size(), dni);
+    }
+
+    public MembershipResponseDTO getById(int id)
+    {
+        return membershipMapper.entityToDTO(
+                membershipRepository.findById(id)
+                        .orElseThrow(() -> new MembershipNotFoundException("Membership not found."))
+        );
+    }
+
+    public MembershipResponseDTO getLastByDni(String dni)
+    {
+        return membershipMapper.entityToDTO(
+                membershipRepository.findLastByDni(dni)
+                        .orElseThrow(() -> new MembershipNotFoundException("Membership not found."))
+        );
+    }
+
+    public List<MembershipResponseDTO> getAllByDni(String dni)
+    {
+        List<MembershipEntity> memberships = findAllByDniOrThrow(dni);
+        return membershipMapper.entityToDTO(memberships);
+    }
+
+    public List<MembershipResponseDTO> getAllByDate(LocalDate start, LocalDate end)
+    {
+        return membershipMapper.entityToDTO(
+                membershipRepository.findAllByPaymentDateBetween(start, end)
+        );
+    }
+
+    public List<MembershipResponseDTO> getAllActive()
+    {
+        return membershipMapper.entityToDTO(
+                membershipRepository.findAllByStatus(MembershipStatus.ACTIVE)
+        );
     }
 
     // Activates when the API starts and every 2 hours.
@@ -132,9 +133,9 @@ public class MembershipService
                 .findAllByStatusAndNextPaymentDateBefore(MembershipStatus.ACTIVE, LocalDate.now());
 
         memberships.forEach(this::deactivateMembership);
-
         membershipRepository.saveAll(memberships);
-        log.info("SERVER: Deactivated {} memberships today", memberships.size());
+
+        log.info("DAILY MEMBERSHIPS DEACTIVATION: {} were deactivated today", memberships.size());
     }
 
     // Activates when the API starts and every 2 hours.
@@ -143,11 +144,10 @@ public class MembershipService
     @Transactional
     public void sendExpiryReminder()
     {
-        LocalDate tomorrow = LocalDate.now().plusDays(1);
-        List<MembershipEntity> memberships = membershipRepository
-                .findAllByStatusAndNextPaymentDate(MembershipStatus.ACTIVE, tomorrow);
+        List<MembershipEntity> membershipsAboutToExpire = membershipRepository
+                .findAllByStatusAndNextPaymentDate(MembershipStatus.ACTIVE, LocalDate.now().plusDays(1));
 
-        memberships.forEach(this::sendExpiryReminderMessage);
+        membershipsAboutToExpire.forEach(m -> sendWhatsAppMessage(m.getUser(), m, MembershipMessageType.EXPIRING));
     }
 
     private MembershipEntity buildMembership(String dni, MembershipRequestDTO requestDTO)
@@ -161,7 +161,7 @@ public class MembershipService
         return MembershipEntity
                 .builder()
                 .user(user)
-                .userDni(dni)
+                .dni(dni)
                 .status(MembershipStatus.ACTIVE)
                 .type(requestDTO.type())
                 .paymentMethod(requestDTO.paymentMethod())
@@ -170,58 +170,55 @@ public class MembershipService
                 .build();
     }
 
-    private void incrementActiveMembershipsMetrics()
+    private void deleteMembership(MembershipEntity membership)
     {
-        customMetrics.incrementActiveMemberships();
-    }
+        membershipRepository.delete(membership);
+        sendWhatsAppMessage(membership.getUser(), membership, MembershipMessageType.DELETED);
 
-    private void decrementActiveMembershipMetrics(MembershipEntity membership)
-    {
+        customMetrics.decrementMemberships();
         if (membership.getStatus() == MembershipStatus.ACTIVE)
         {
             customMetrics.decrementActiveMemberships();
         }
     }
 
-    private void updateActiveMembershipMetrics(MembershipStatus status)
+    private void updateMembershipStatus(MembershipEntity membership, MembershipStatus status)
     {
+        membership.setStatus(status);
         if (status == MembershipStatus.ACTIVE)
         {
             customMetrics.incrementActiveMemberships();
-            return;
         }
-        customMetrics.decrementActiveMemberships();
+        else
+        {
+            customMetrics.decrementActiveMemberships();
+        }
     }
 
     private void deactivateMembership(MembershipEntity membership)
     {
-        membership.setStatus(MembershipStatus.INACTIVE);
-        if (membership.getUser() != null && membership.getUser().getPhoneNumber() != null)
-        {
-            whatsAppService.sendMembershipExpiredMessage(membership, membership.getUser());
-        }
-        customMetrics.decrementActiveMemberships();
+        // Set the membership as INACTIVE and decrement CustomMetrics totalActiveMemberships.
+        updateMembershipStatus(membership, MembershipStatus.INACTIVE);
+
+        sendWhatsAppMessage(membership.getUser(), membership, MembershipMessageType.EXPIRED);
     }
 
-    private void sendExpiryReminderMessage(MembershipEntity membership)
+    private void sendWhatsAppMessage(UserEntity user, MembershipEntity membership, MembershipMessageType messageType)
     {
-        if (membership.getUser() != null && membership.getUser().getPhoneNumber() != null)
+        if (user != null && user.getPhoneNumber() != null)
         {
-            whatsAppService.sendMembershipExpiryReminderMessage(membership, membership.getUser());
-        }
-    }
-
-    private void sendMembershipCreatedMessage(MembershipEntity membership)
-    {
-        if (membership.getUser() != null && membership.getUser().getPhoneNumber() != null)
-        {
-            whatsAppService.sendMembershipCreatedMessage(membership, membership.getUser());
+            log.info("WhatsApp message of type {} was sent to user with dni={} and phoneNumber={}",
+                    messageType,
+                    user.getDni(),
+                    user.getPhoneNumber()
+            );
+            whatsAppService.sendMessage(user.getPhoneNumber(), messageType.format(user, membership));
         }
     }
 
     private List<MembershipEntity> findAllByDniOrThrow(String dni)
     {
-        List<MembershipEntity> memberships = membershipRepository.findAllByUserDni(dni);
+        List<MembershipEntity> memberships = membershipRepository.findAllByDni(dni);
         if (memberships.isEmpty())
         {
             throw new MembershipNotFoundException("Memberships not found.");
