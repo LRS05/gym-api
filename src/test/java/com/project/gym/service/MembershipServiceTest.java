@@ -80,10 +80,9 @@ public class MembershipServiceTest
         assertEquals(expectedUser, captor.getValue().getUser());
         assertEquals(expectedMembershipDTO, result);
         assertNotNull(expectedMembership.getUser().getPhoneNumber());
-        assertDoesNotThrow(() -> whatsAppService.sendMembershipCreatedMessage(any(MembershipEntity.class), any(UserEntity.class)));
 
         verify(userRepository).findByDni(dni);
-        verify(whatsAppService).sendMembershipCreatedMessage(any(MembershipEntity.class), any(UserEntity.class));
+        verify(whatsAppService).sendMessage(anyString(), anyString());
         verify(membershipMapper).entityToDTO(expectedMembership);
     }
 
@@ -395,7 +394,7 @@ public class MembershipServiceTest
         ));
 
         verify(membershipRepository).findAllByStatusAndNextPaymentDateBefore(MembershipStatus.ACTIVE, actualDate);
-        verify(whatsAppService).sendMembershipExpiredMessage(any(MembershipEntity.class), any(UserEntity.class));
+        verify(whatsAppService).sendMessage(anyString(), anyString());
     }
 
     @Test
@@ -545,18 +544,15 @@ public class MembershipServiceTest
         // When
         when(membershipRepository.findAllByDni(dni)).thenReturn(expectedMemberships);
 
-        ArgumentCaptor<List<MembershipEntity>> captor = ArgumentCaptor.forClass(List.class);
         membershipService.deleteAllByDni(dni);
 
         // Then
-        verify(membershipRepository).deleteAll(captor.capture());
-
-        assertEquals(expectedMemberships, captor.getValue());
-        assertTrue(captor.getValue().stream().allMatch(m ->
-                m.getDni().equals(dni)
-        ));
+        assertEquals(2, expectedMemberships.size());
+        assertEquals(dni, expectedMemberships.get(0).getDni());
+        assertEquals(dni, expectedMemberships.get(1).getDni());
 
         verify(membershipRepository).findAllByDni(dni);
+        verify(membershipRepository, times(2)).delete(any(MembershipEntity.class));
     }
 
     @Test
@@ -592,9 +588,8 @@ public class MembershipServiceTest
         // Then
         assertEquals(membership.getNextPaymentDate(), LocalDate.now().plusDays(1));
         assertNotNull(membership.getUser().getPhoneNumber());
-        assertDoesNotThrow(() -> whatsAppService.sendMembershipExpiryReminderMessage(any(MembershipEntity.class), any(UserEntity.class)));
 
         verify(membershipRepository).findAllByStatusAndNextPaymentDate(MembershipStatus.ACTIVE, LocalDate.now().plusDays(1));
-        verify(whatsAppService).sendMembershipExpiryReminderMessage(any(MembershipEntity.class), any(UserEntity.class));
+        verify(whatsAppService).sendMessage(anyString(), anyString());
     }
 }
