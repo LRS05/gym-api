@@ -7,9 +7,13 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum MembershipMessageType
 {
-    EXPIRING("Hello! %s %s,\nYour %s membership purchased on %s will expire tomorrow."),
-    EXPIRED("Hello! %s %s,\nYour %s membership purchased on %s has expired."),
-    CREATED("Hello! %s %s,\nYour %s membership was successfully created on %s.");
+    EXPIRING("Hello %s %s!\nYour membership (ID=%s, type=%s), created on %s, is about to expire tomorrow %s."),
+
+    EXPIRED("Hello %s %s!\nYour membership (ID=%s, type=%s), created on %s, expired today %s."),
+
+    CREATED("Hello %s %s!\nYour membership (ID=%s, type=%s) was successfully created on %s and expires on %s."),
+
+    DELETED("Hello %s %s!\nYour membership (ID=%s, type=%s), created on %s and expiring on %s, was deleted by a staff member.");
 
     private final String template;
 
@@ -19,8 +23,10 @@ public enum MembershipMessageType
                 template,
                 user.getFirstName(),
                 user.getLastName(),
-                membership.getType().name().toLowerCase(),
-                membership.getPaymentDate()
+                membership.getId(),
+                membership.getType(),
+                membership.getPaymentDate(),
+                membership.getNextPaymentDate()
         );
     }
 }
