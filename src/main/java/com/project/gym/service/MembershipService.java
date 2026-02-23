@@ -49,7 +49,7 @@ public class MembershipService
         return membershipMapper.entityToDTO(savedMembership);
     }
 
-    public MembershipResponseDTO updateMembershipStatusById(int id, MembershipStatusRequestDTO requestDTO)
+    public MembershipResponseDTO updateStatusById(int id, MembershipStatusRequestDTO requestDTO)
     {
         MembershipEntity membership = membershipRepository.findById(id)
                 .orElseThrow(() -> new MembershipNotFoundException("Membership not found."));
@@ -127,7 +127,7 @@ public class MembershipService
     // Activates when the API starts and every 2 hours.
     @Scheduled(fixedRate = 2 * 60 * 60 * 1000, initialDelay = 0)
     @Transactional
-    public void deactivateMemberships()
+    public void dailyDeactivation()
     {
         List<MembershipEntity> memberships = membershipRepository
                 .findAllByStatusAndNextPaymentDateBefore(MembershipStatus.ACTIVE, LocalDate.now());
