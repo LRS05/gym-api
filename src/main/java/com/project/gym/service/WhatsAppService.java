@@ -2,13 +2,10 @@ package com.project.gym.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.project.gym.dto.WhatsAppMessageBodyDTO;
-import com.project.gym.dto.WhatsAppRequestMessageDTO;
-import com.project.gym.dto.WhatsAppRequestMessageTextDTO;
-import com.project.gym.dto.WhatsappResponseDTO;
-import com.project.gym.entity.MembershipEntity;
-import com.project.gym.entity.UserEntity;
-import com.project.gym.entity.enums.MembershipMessageType;
+import com.project.gym.dto.whatsapp.WhatsAppMessageBodyDTO;
+import com.project.gym.dto.whatsapp.WhatsAppRequestMessageDTO;
+import com.project.gym.dto.whatsapp.WhatsAppRequestMessageTextDTO;
+import com.project.gym.dto.whatsapp.WhatsappResponseDTO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -33,40 +30,25 @@ public class WhatsAppService
                 .build();
     }
 
-    public void sendMembershipCreatedMessage(MembershipEntity membership, UserEntity user)
-    {
-        sendMembershipMessage(MembershipMessageType.CREATED, membership, user);
-    }
-
-    public void sendMembershipExpiredMessage(MembershipEntity membership, UserEntity user)
-    {
-        sendMembershipMessage(MembershipMessageType.EXPIRED, membership, user);
-    }
-
-    public void sendMembershipExpiryReminderMessage(MembershipEntity membership, UserEntity user)
-    {
-        sendMembershipMessage(MembershipMessageType.EXPIRING, membership, user);
-    }
-
-    private void sendMembershipMessage(MembershipMessageType type, MembershipEntity membership, UserEntity user)
+    public void sendMessage(String phoneNumber, String message)
     {
         try
         {
-            WhatsAppMessageBodyDTO messageBody = createWhatsappMessage(type, membership, user);
+            WhatsAppMessageBodyDTO messageBody = createMessage(phoneNumber, message);
             WhatsAppRequestMessageDTO requestMessageDTO = createRequestMessage(messageBody);
             createResponseMessage(requestMessageDTO);
         }
         catch (Exception e)
         {
-            log.error("Failed to send Whatsapp {} message for user {} and membership {}", type.name(), user.getDni(), membership.getId(), e);
+            log.error("Failed to send {} message to {} number", message, phoneNumber);
         }
     }
 
-    private WhatsAppMessageBodyDTO createWhatsappMessage(MembershipMessageType messageType, MembershipEntity membership, UserEntity user)
+    private WhatsAppMessageBodyDTO createMessage(String phoneNumber, String message)
     {
         return new WhatsAppMessageBodyDTO(
-                user.getPhoneNumber(),
-                messageType.format(user, membership)
+                phoneNumber,
+                message
         );
     }
 
