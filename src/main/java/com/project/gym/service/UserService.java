@@ -48,7 +48,7 @@ public class UserService
 
     public String addPhoneNumber(PhoneNumberRequestDTO requestDTO)
     {
-        String phoneNumber = requestDTO.countryCode() + requestDTO.phoneNumber();
+        String phoneNumber = requestDTO.countryCode().getCode() + requestDTO.phoneNumber();
         if (userRepository.existsByPhoneNumber(phoneNumber))
         {
             throw new PhoneNumberAlreadyExistsException("Phone number is already registered.");
