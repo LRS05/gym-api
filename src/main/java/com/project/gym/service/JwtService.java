@@ -54,8 +54,14 @@ public class JwtService
 
     public String getTokenFromCookies(Cookie[] cookies, TokenType tokenType)
     {
-        // Throws exception if the token is not found.
-        return findCookieToken(cookies, tokenType);
+        if (cookies == null) throw new CookieNotFoundException("Cookies not found.");
+
+        return Arrays.stream(cookies)
+                .filter(c -> c.getName().equals(tokenType.name().toLowerCase() + "-token"))
+                .map(Cookie::getValue)
+                .filter(token -> !token.isBlank())
+                .findFirst()
+                .orElseThrow(() -> new CookieNotFoundException(tokenType + " token cookie not found."));
     }
 
     public boolean isTokenValid(String token, UserEntity user)
@@ -132,18 +138,6 @@ public class JwtService
                 .path("/")
                 .maxAge(Duration.ofMinutes(durationOfMinutes))
                 .build();
-    }
-
-    private String findCookieToken(Cookie[] cookies, TokenType tokenType)
-    {
-        if (cookies == null) throw new CookieNotFoundException("Cookies not found.");
-
-        return Arrays.stream(cookies)
-                .filter(c -> c.getName().equals(tokenType.name().toLowerCase() + "-token"))
-                .map(Cookie::getValue)
-                .filter(token -> !token.isBlank())
-                .findFirst()
-                .orElseThrow(() -> new CookieNotFoundException(tokenType + " token cookie not found."));
     }
 
     private SecretKey secretKey()
