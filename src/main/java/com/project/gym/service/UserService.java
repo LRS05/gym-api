@@ -48,15 +48,15 @@ public class UserService
 
     public String addPhoneNumber(PhoneNumberRequestDTO requestDTO)
     {
-        if (userRepository.existsByPhoneNumber("54" + requestDTO.phoneNumber()))
+        String phoneNumber = requestDTO.countryCode() + requestDTO.phoneNumber();
+        if (userRepository.existsByPhoneNumber(phoneNumber))
         {
             throw new PhoneNumberAlreadyExistsException("Phone number is already registered.");
         }
 
         UserEntity user = findCurrentUserOrThrow();
+        user.setPhoneNumber(phoneNumber);
 
-        // The "54" is the country code for Argentina.
-        user.setPhoneNumber("54" + requestDTO.phoneNumber());
         userRepository.save(user);
 
         return "The phone number " + requestDTO.phoneNumber() + " has been successfully added to your account!";
