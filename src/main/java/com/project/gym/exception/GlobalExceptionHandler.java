@@ -47,12 +47,6 @@ public class GlobalExceptionHandler
         return sendErrorResponse(HttpStatus.UNAUTHORIZED, e.getMessage(), ApiError.COOKIE_NOT_FOUND);
     }
 
-    @ExceptionHandler(UserAlreadyAuthenticatedException.class)
-    public ResponseEntity<ErrorResponseDTO> handleUserAlreadyAuthenticatedException(UserAlreadyAuthenticatedException e)
-    {
-        return sendErrorResponse(HttpStatus.FORBIDDEN, e.getMessage(), ApiError.USER_ALREADY_AUTHENTICATED);
-    }
-
     @ExceptionHandler(MembershipNotFoundException.class)
     public ResponseEntity<ErrorResponseDTO> handleMembershipNotFoundException(MembershipNotFoundException e)
     {
@@ -110,6 +104,7 @@ public class GlobalExceptionHandler
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponseDTO> handleHttpMessageNotReadableException(HttpMessageNotReadableException e)
     {
+        log.warn("Attempted to perform an action with an invalid request body");
         return sendErrorResponse(HttpStatus.BAD_REQUEST, "Invalid request body.", ApiError.HTTP_MESSAGE_NOT_READABLE);
     }
 
