@@ -1,4 +1,4 @@
-package com.project.gym.dto;
+package com.project.gym.dto.whatsapp;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
