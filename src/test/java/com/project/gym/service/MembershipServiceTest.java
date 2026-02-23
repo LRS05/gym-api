@@ -177,7 +177,7 @@ public class MembershipServiceTest
     }
 
     @Test
-    void getMembershipsByDate_whenMembershipsExists_thenReturnMembershipList()
+    void getMembershipsByDate_whenMembershipsExists_thenReturnMemberships()
     {
         // Given
         List<MembershipEntity> expectedMemberships = MembershipFactory.membershipListOf2025();
@@ -233,7 +233,7 @@ public class MembershipServiceTest
         when(membershipRepository.findById(id)).thenReturn(Optional.of(expectedMembership));
         when(membershipMapper.entityToDTO(expectedMembership)).thenReturn(expectedDTO);
 
-        MembershipResponseDTO result = membershipService.getMembershipById(id);
+        MembershipResponseDTO result = membershipService.getById(id);
 
         // Then
         assertEquals(expectedDTO, result);
@@ -243,7 +243,7 @@ public class MembershipServiceTest
     }
 
     @Test
-    void getMembershipById_WhenMembershipsDoesNotExist_ThenThrowException()
+    void getById_WhenMembershipsDoesNotExist_ThenThrowException()
     {
         // Given
         int id = -1;
@@ -252,7 +252,7 @@ public class MembershipServiceTest
         when(membershipRepository.findById(id)).thenReturn(Optional.empty());
 
         // Then
-        assertThrows(MembershipNotFoundException.class, () -> membershipService.getMembershipById(id));
+        assertThrows(MembershipNotFoundException.class, () -> membershipService.getById(id));
 
         verify(membershipRepository).findById(id);
     }
@@ -297,7 +297,7 @@ public class MembershipServiceTest
     }
 
     @Test
-    void getLastMembershipByDni_whenMembershipExists_thenReturnMembership()
+    void getLastByDni_whenMembershipExists_thenReturnMembership()
     {
         // Given
         String dni = "87654321";
@@ -308,7 +308,7 @@ public class MembershipServiceTest
         when(membershipRepository.findLastByDni(dni)).thenReturn(Optional.of(expectedMembership));
         when(membershipMapper.entityToDTO(expectedMembership)).thenReturn(expectedDTO);
 
-        MembershipResponseDTO result = membershipService.getLastMembershipByDni(dni);
+        MembershipResponseDTO result = membershipService.getLastByDni(dni);
 
         // Then
         assertEquals(expectedDTO, result);
@@ -318,7 +318,7 @@ public class MembershipServiceTest
     }
 
     @Test
-    void getLastMembershipByDni_whenMembershipDoesNotExist_thenThrowException()
+    void getLastByDni_whenDoesNotExist_thenThrowException()
     {
         // Given
         String dni = "88888888";
@@ -327,13 +327,13 @@ public class MembershipServiceTest
         when(membershipRepository.findLastByDni(dni)).thenReturn(Optional.empty());
 
         // Then
-        assertThrows(MembershipNotFoundException.class, () -> membershipService.getLastMembershipByDni(dni));
+        assertThrows(MembershipNotFoundException.class, () -> membershipService.getLastByDni(dni));
 
         verify(membershipRepository).findLastByDni(dni);
     }
 
     @Test
-    void getActiveMemberships_whenActiveMembershipsExist_thenReturnActiveMembershipsList()
+    void getActiveMemberships_whenActiveMembershipsExist_thenReturnActiveMemberships()
     {
         // Given
         List<MembershipEntity> expectedMemberships = MembershipFactory.activeMembershipsList();
@@ -372,7 +372,7 @@ public class MembershipServiceTest
     }
 
     @Test
-    void deactivateMemberships_whenMembershipsExist_thenDeactivateMemberships()
+    void dailyDeactivation_whenMembershipsExist_thenDailyDeactivation()
     {
         // Given
         LocalDate actualDate = LocalDate.now();
@@ -384,7 +384,7 @@ public class MembershipServiceTest
 
         ArgumentCaptor<List<MembershipEntity>> captor = ArgumentCaptor.forClass(List.class);
 
-        membershipService.deactivateMemberships();
+        membershipService.dailyDeactivation();
 
         // Then
         verify(membershipRepository).saveAll(captor.capture());
@@ -398,7 +398,7 @@ public class MembershipServiceTest
     }
 
     @Test
-    void deactivateMemberships_whenMembershipsDoNotExist_thenDoNothing()
+    void dailyDeactivation_whenExpiredMembershipsDoNotExist_thenDoNothing()
     {
         // Given
         LocalDate actualDate = LocalDate.now();
@@ -406,16 +406,16 @@ public class MembershipServiceTest
         // When
         when(membershipRepository.findAllByStatusAndNextPaymentDateBefore(MembershipStatus.ACTIVE, actualDate)).thenReturn(new ArrayList<>());
 
-        membershipService.deactivateMemberships();
+        membershipService.dailyDeactivation();
 
-        // THen
+        // Then
         verify(membershipRepository).findAllByStatusAndNextPaymentDateBefore(MembershipStatus.ACTIVE, actualDate);
         verifyNoInteractions(whatsAppService);
         verify(membershipRepository).saveAll(new ArrayList<>());
     }
 
     @Test
-    void updateMembershipStatusById_whenMembershipExists_thenReturnMembershipUpdated()
+    void updateStatusById_whenMembershipExists_thenReturnMembershipUpdated()
     {
         // Given
         int id = 1;
@@ -444,7 +444,7 @@ public class MembershipServiceTest
 
 
         ArgumentCaptor<MembershipEntity> captor = ArgumentCaptor.forClass(MembershipEntity.class);
-        MembershipResponseDTO result = membershipService.updateMembershipStatusById(id, requestDTO);
+        MembershipResponseDTO result = membershipService.updateStatusById(id, requestDTO);
 
         // Then
         verify(membershipRepository).save(captor.capture());
@@ -456,7 +456,7 @@ public class MembershipServiceTest
     }
 
     @Test
-    void updateMembershipStatusById_whenMembershipDoesNotExist_thenThrowException()
+    void updateStatusById_whenMembershipDoesNotExist_thenThrowException()
     {
         // Given
         int id = 1;
@@ -466,14 +466,14 @@ public class MembershipServiceTest
         when(membershipRepository.findById(id)).thenReturn(Optional.empty());
 
         // Then
-        assertThrows(MembershipNotFoundException.class, () -> membershipService.updateMembershipStatusById(id, requestDTO));
+        assertThrows(MembershipNotFoundException.class, () -> membershipService.updateStatusById(id, requestDTO));
 
         verify(membershipRepository).findById(id);
         verifyNoMoreInteractions(membershipRepository);
     }
 
     @Test
-    void updateMembershipStatusById_WhenMembershipAlreadyHasRequestedStatus_ThenDoNothing()
+    void updateStatusById_WhenMembershipAlreadyHasRequestedStatus_ThenDoNothing()
     {
         // Given
         int id = 1;
@@ -485,7 +485,7 @@ public class MembershipServiceTest
         when(membershipRepository.findById(id)).thenReturn(Optional.of(expectedMembership));
         when(membershipMapper.entityToDTO(expectedMembership)).thenReturn(expectedMembershipDTO);
 
-        MembershipResponseDTO result = membershipService.updateMembershipStatusById(id, requestDTO);
+        MembershipResponseDTO result = membershipService.updateStatusById(id, requestDTO);
 
         // Then
         assertEquals(requestDTO.status(), result.status());
@@ -495,7 +495,7 @@ public class MembershipServiceTest
     }
 
     @Test
-    void deleteMembershipById_whenMembershipExists_thenDeleteMembership()
+    void deleteById_whenMembershipExists_thenDeleteMembership()
     {
         // Given
         int id = 1;
@@ -516,7 +516,7 @@ public class MembershipServiceTest
     }
 
     @Test
-    void deleteMembershipById_whenMembershipDoesNotExist_thenThrowException()
+    void deleteById_whenMembershipDoesNotExist_thenThrowException()
     {
         // Given
         int id = -1;
@@ -532,7 +532,7 @@ public class MembershipServiceTest
     }
 
     @Test
-    void deleteMembershipsByDni_whenMembershipsExist_thenDeleteMemberships()
+    void deleteAllByDni_whenMembershipsExist_thenDeleteMemberships()
     {
         // Given
         String dni = "87654321";
@@ -556,7 +556,7 @@ public class MembershipServiceTest
     }
 
     @Test
-    void deleteMembershipsByDni_whenMembershipsDoNotExist_thenThrowException()
+    void deleteAllByDni_whenMembershipsDoNotExist_thenThrowException()
     {
         // Given
         String dni = "99999999";
