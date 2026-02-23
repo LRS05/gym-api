@@ -18,7 +18,7 @@ public interface MembershipRepository extends JpaRepository<MembershipEntity, In
 
     List<MembershipEntity> findAllByStatus(MembershipStatus status);
 
-    List<MembershipEntity> findAllByUserDni(String dni);
+    List<MembershipEntity> findAllByDni(String dni);
 
     @Query(
             value = "SELECT * " +
@@ -28,7 +28,7 @@ public interface MembershipRepository extends JpaRepository<MembershipEntity, In
                     "LIMIT 1",
             nativeQuery = true
     )
-    Optional<MembershipEntity> findLastByUserDni(@Param("dni") String dni);
+    Optional<MembershipEntity> findLastByDni(@Param("dni") String dni);
 
     List<MembershipEntity> findAllByStatusAndNextPaymentDateBefore(MembershipStatus status, LocalDate date);
 

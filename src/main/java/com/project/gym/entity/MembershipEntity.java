@@ -30,7 +30,7 @@ public class MembershipEntity
     private UserEntity user;
 
     @Column(name = "user_dni")
-    private String userDni;
+    private String dni;
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)

@@ -114,7 +114,7 @@ public class MembershipFactory
         return MembershipEntity.builder()
                 .id(id)
                 .user(user)
-                .userDni(userDni)
+                .dni(userDni)
                 .status(MembershipStatus.ACTIVE)
                 .type(type)
                 .paymentMethod(paymentMethod)
@@ -130,7 +130,7 @@ public class MembershipFactory
         return new MembershipResponseDTO(
                 membership.getId(),
                 membership.getUser() == null ? -1 : membership.getUser().getId(),
-                membership.getUserDni(),
+                membership.getDni(),
                 membership.getStatus(),
                 membership.getType(),
                 membership.getPaymentMethod(),

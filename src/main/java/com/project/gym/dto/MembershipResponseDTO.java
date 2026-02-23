@@ -15,7 +15,7 @@ public record MembershipResponseDTO(
         int userId,
 
         @JsonProperty("user_dni")
-        String userDni,
+        String dni,
 
         MembershipStatus status,
 
