@@ -25,7 +25,7 @@ import java.util.List;
 public class AdminControllerTest
 {
     @LocalServerPort
-    int port;
+    private int port;
 
     private RestTestClient restTestClient;
 
@@ -288,16 +288,16 @@ public class AdminControllerTest
     }
 
     @Test
-    void createMembershipByDni_whenUserIsNotAdminOrStaff_thenReturnMembership()
+    void createMembership_whenUserIsNotAdminOrStaff_thenReturnMembership()
     {
-        String dni = "87654321";
         MembershipRequestDTO requestDTO = new MembershipRequestDTO(
+                "87654321",
                 MembershipType.ANNUALLY,
                 PaymentMethod.CARD
         );
 
         restTestClient.post()
-                .uri("/api/v1/admin/users/dni/{dni}/memberships", dni)
+                .uri("/api/v1/admin/users/memberships")
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(requestDTO)
                 .exchange()
@@ -309,16 +309,16 @@ public class AdminControllerTest
     }
 
     @Test
-    void createMembershipByDni_whenUserIsAdminOrStaff_thenReturnConflict()
+    void createMembership_whenUserIsAdminOrStaff_thenReturnConflict()
     {
-        String dni = "46622977";
         MembershipRequestDTO requestDTO = new MembershipRequestDTO(
+                "46622977",
                 MembershipType.ANNUALLY,
                 PaymentMethod.CARD
         );
 
         restTestClient.post()
-                .uri("/api/v1/admin/users/dni/{dni}/memberships", dni)
+                .uri("/api/v1/admin/users/memberships")
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(requestDTO)
                 .exchange()
@@ -329,13 +329,12 @@ public class AdminControllerTest
     }
 
     @Test
-    void createMembershipByDni_whenRequestBodyIsMalformed_thenReturnBadRequest()
+    void createMembership_whenRequestBodyIsMalformed_thenReturnBadRequest()
     {
-        String dni = "87654321";
         String invalidDTO = "INVALID_REQUEST_BODY";
 
         restTestClient.post()
-                .uri("/api/v1/admin/users/dni/{dni}/memberships", dni)
+                .uri("/api/v1/admin/users/memberships")
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(invalidDTO)
                 .exchange()
@@ -346,12 +345,10 @@ public class AdminControllerTest
     }
 
     @Test
-    void createMembershipByDni_whenRequestBodyIsEmpty_thenReturnBadRequest()
+    void createMembership_whenRequestBodyIsEmpty_thenReturnBadRequest()
     {
-        String dni = "87654321";
-
         restTestClient.post()
-                .uri("/api/v1/admin/users/dni/{dni}/memberships", dni)
+                .uri("/api/v1/admin/users/memberships")
                 .contentType(MediaType.APPLICATION_JSON)
                 .body("{}")
                 .exchange()
