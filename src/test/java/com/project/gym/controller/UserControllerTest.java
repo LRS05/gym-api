@@ -135,6 +135,7 @@ public class UserControllerTest
     void createMembership_whenDTOIsValid_thenReturnMembership()
     {
         MembershipRequestDTO requestDTO = new MembershipRequestDTO(
+                "87654321",
                 MembershipType.ANNUALLY,
                 PaymentMethod.CARD
         );
