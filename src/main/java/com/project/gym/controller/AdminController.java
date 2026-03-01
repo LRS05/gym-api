@@ -75,11 +75,11 @@ public class AdminController
 
 
 
-    @PostMapping("/users/dni/{dni}/memberships")
-    public ResponseEntity<MembershipResponseDTO> createMembershipByDni(@PathVariable String dni, @Valid @RequestBody MembershipRequestDTO requestDTO)
+    @PostMapping("/users/memberships")
+    public ResponseEntity<MembershipResponseDTO> createMembership(@Valid @RequestBody MembershipRequestDTO requestDTO)
     {
-        log.debug("Attempting to create a membership for the user with dni={}, type={}, payment method={}", dni, requestDTO.type(), requestDTO.paymentMethod());
-        return ResponseEntity.status(HttpStatus.CREATED).body(membershipService.createByDni(dni, requestDTO));
+        log.debug("Attempting to create a membership for the user with dni={}, type={}, payment method={}", requestDTO.dni(), requestDTO.type(), requestDTO.paymentMethod());
+        return ResponseEntity.status(HttpStatus.CREATED).body(membershipService.create(requestDTO));
     }
 
     @GetMapping("/users/memberships/{id}")
@@ -131,7 +131,7 @@ public class AdminController
     public ResponseEntity<String> deleteMembershipById(@PathVariable int id)
     {
         log.debug("Attempting to delete membership with id={}", id);
-        membershipService.deleteMembershipById(id);
+        membershipService.deleteById(id);
         return ResponseEntity.ok("Membership with id " + id + " successfully deleted.");
     }
 }
