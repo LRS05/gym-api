@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.project.gym.dto.whatsapp.WhatsAppMessageBodyDTO;
 import com.project.gym.dto.whatsapp.WhatsAppRequestMessageDTO;
 import com.project.gym.dto.whatsapp.WhatsAppRequestMessageTextDTO;
-import com.project.gym.dto.whatsapp.WhatsappResponseDTO;
+import com.project.gym.dto.whatsapp.WhatsAppResponseDTO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -34,17 +34,19 @@ public class WhatsAppService
     {
         try
         {
-            WhatsAppMessageBodyDTO messageBody = createMessage(phoneNumber, message);
+            WhatsAppMessageBodyDTO messageBody = createMessageBody(phoneNumber, message);
             WhatsAppRequestMessageDTO requestMessageDTO = createRequestMessage(messageBody);
             createResponseMessage(requestMessageDTO);
+
+            log.info("WhatsApp message '{}' has been sent to number {}", message, phoneNumber);
         }
         catch (Exception e)
         {
-            log.error("Failed to send {} message to {} number", message, phoneNumber);
+            log.error("WhatsApp message failed for number {}, error={}", phoneNumber, e.getMessage());
         }
     }
 
-    private WhatsAppMessageBodyDTO createMessage(String phoneNumber, String message)
+    private WhatsAppMessageBodyDTO createMessageBody(String phoneNumber, String message)
     {
         return new WhatsAppMessageBodyDTO(
                 phoneNumber,
@@ -71,6 +73,6 @@ public class WhatsAppService
                 .body(String.class);
 
         ObjectMapper objectMapper = new ObjectMapper();
-        objectMapper.readValue(response, WhatsappResponseDTO.class);
+        objectMapper.readValue(response, WhatsAppResponseDTO.class);
     }
 }
