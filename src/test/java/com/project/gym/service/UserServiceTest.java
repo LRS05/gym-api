@@ -2,15 +2,20 @@ package com.project.gym.service;
 
 import com.project.gym.config.CustomMetrics;
 import com.project.gym.dto.PasswordRequestDTO;
+import com.project.gym.dto.PhoneNumberRequestDTO;
 import com.project.gym.dto.UserResponseDTO;
 import com.project.gym.entity.UserEntity;
+import com.project.gym.entity.enums.CountryCode;
 import com.project.gym.exception.InvalidPasswordException;
+import com.project.gym.exception.PhoneNumberAlreadyExistsException;
 import com.project.gym.mapper.UserMapper;
 import com.project.gym.repository.UserRepository;
 import com.project.gym.factory.UserFactory;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -43,6 +48,16 @@ public class UserServiceTest
     @InjectMocks
     private UserService userService;
 
+    @BeforeEach
+    void setSecurityContext()
+    {
+        String dni = "87654321";
+
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(dni, null, new ArrayList<>())
+        );
+    }
+
     @AfterEach
     void clearSecurityContext()
     {
@@ -53,13 +68,10 @@ public class UserServiceTest
     void getMe_whenUserExists_thenReturnOwnInfo()
     {
         // Given
-        String dni = "87654321";
+        String dni = SecurityContextHolder.getContext().getAuthentication().getName();
+
         UserEntity expectedUser = UserFactory.userUser();
         UserResponseDTO expectedDTO = UserFactory.userUserDTO();
-
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken(dni, null, new ArrayList<>())
-        );
 
         // When
         when(userRepository.findByDni(dni)).thenReturn(Optional.of(expectedUser));
@@ -78,10 +90,7 @@ public class UserServiceTest
     void getMe_whenUserDoesNotExist_thenThrowException()
     {
         // Given
-        String dni = "99999999";
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken(dni, null, new ArrayList<>())
-        );
+        String dni = SecurityContextHolder.getContext().getAuthentication().getName();
 
         // When
         when(userRepository.findByDni(dni)).thenReturn(Optional.empty());
@@ -96,13 +105,10 @@ public class UserServiceTest
     void deleteMe_whenUserExistsAndPasswordIsCorrect_thenDeleteUser()
     {
         // Given
-        String dni = "87654321";
+        String dni = SecurityContextHolder.getContext().getAuthentication().getName();
         PasswordRequestDTO requestDTO = new PasswordRequestDTO("gordomono");
-        UserEntity expectedUser = UserFactory.userUser();
 
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken(dni, null, new ArrayList<>())
-        );
+        UserEntity expectedUser = UserFactory.userUser();
 
         // When
         when(userRepository.findByDni(dni)).thenReturn(Optional.of(expectedUser));
@@ -122,19 +128,15 @@ public class UserServiceTest
     void deleteMe_whenUserDoesNotExist_thenThrowException()
     {
         // Given
-        String dni = "99999999";
+        String dni = SecurityContextHolder.getContext().getAuthentication().getName();
         PasswordRequestDTO requestDTO = new PasswordRequestDTO("gordomono");
-
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken(dni, null, new ArrayList<>())
-        );
 
         // When
         when(userRepository.findByDni(dni)).thenReturn(Optional.empty());
 
+        // Then
         assertThrows(UsernameNotFoundException.class, () -> userService.deleteMe(requestDTO));
 
-        // Then
         verify(userRepository).findByDni(dni);
         verifyNoMoreInteractions(userRepository);
     }
@@ -143,13 +145,10 @@ public class UserServiceTest
     void deleteMe_whenPasswordIsIncorrect_thenThrowException()
     {
         // Given
-        String dni = "87654321";
+        String dni = SecurityContextHolder.getContext().getAuthentication().getName();
+
         PasswordRequestDTO requestDTO = new PasswordRequestDTO("monogordo");
         UserEntity expectedUser = UserFactory.userUser();
-
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken(dni, null, new ArrayList<>())
-        );
 
         // When
         when(userRepository.findByDni(dni)).thenReturn(Optional.of(expectedUser));
@@ -161,5 +160,55 @@ public class UserServiceTest
         verify(userRepository).findByDni(dni);
         verify(passwordEncoder).matches(requestDTO.password(), expectedUser.getPassword());
         verifyNoMoreInteractions(userRepository);
+    }
+
+    @Test
+    void addPhoneNumber_whenPhoneNumberIsValidAndNotRegistered_thenAddPhoneNumberAndReturnMessage()
+    {
+        // Given
+        String dni = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        UserEntity expectedUser = UserFactory.userUser();
+        UserEntity expectedUserUpdated = UserFactory.userUserWithPhoneNumber();
+
+        PhoneNumberRequestDTO requestDTO = new PhoneNumberRequestDTO(
+                CountryCode.ARGENTINA,
+                "2345511370"
+        );
+        String phoneNumber = "542345511370";
+        String expectedMessage = "The phone number " + phoneNumber + " has been successfully added to your account!";
+
+        // When
+        when(userRepository.existsByPhoneNumber(phoneNumber)).thenReturn(false);
+        when(userRepository.findByDni(dni)).thenReturn(Optional.of(expectedUser));
+        when(userRepository.save(any(UserEntity.class))).thenReturn(expectedUserUpdated);
+
+        ArgumentCaptor<UserEntity> captor = ArgumentCaptor.forClass(UserEntity.class);
+        String result = userService.addPhoneNumber(requestDTO);
+
+        // Then
+        verify(userRepository).save(captor.capture());
+
+        assertEquals(phoneNumber, captor.getValue().getPhoneNumber());
+        assertEquals(expectedMessage, result);
+    }
+
+    @Test
+    void addPhoneNumber_whenPhoneNumberIsAlreadyRegistered_thenThrowException()
+    {
+        // Given
+        PhoneNumberRequestDTO requestDTO = new PhoneNumberRequestDTO(
+                CountryCode.ARGENTINA,
+                "2345511370"
+        );
+        String phoneNumber = "542345511370";
+
+        // When
+        when(userRepository.existsByPhoneNumber(phoneNumber)).thenReturn(true);
+
+        // Then
+        assertThrows(PhoneNumberAlreadyExistsException.class, () -> userService.addPhoneNumber(requestDTO));
+
+        verify(userRepository).existsByPhoneNumber(phoneNumber);
     }
 }
