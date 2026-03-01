@@ -26,6 +26,13 @@ public class MembershipFactory
         );
     }
 
+    public static MembershipEntity userRegisteredMembershipWithPhoneNumber()
+    {
+        MembershipEntity membership = userRegisteredMembership();
+        membership.setUser(UserFactory.userUserWithPhoneNumber());
+        return membership;
+    }
+
     public static MembershipEntity userNotRegisteredMembership()
     {
         return membershipBuilder(
@@ -52,6 +59,13 @@ public class MembershipFactory
                 LocalDate.of(2025, 5, 12),
                 "87654321"
         );
+    }
+
+    public static MembershipEntity expiredMembershipWithPhoneNumber()
+    {
+        MembershipEntity membership = expiredMembership();
+        membership.setUser(UserFactory.userUserWithPhoneNumber());
+        return membership;
     }
 
     public static List<MembershipEntity> membershipListOf2025()
@@ -81,6 +95,11 @@ public class MembershipFactory
     public static MembershipResponseDTO userRegisteredMembershipDTO()
     {
         return entityToDTO(userRegisteredMembership());
+    }
+
+    public static MembershipResponseDTO userRegisteredMembershipWithPhoneNumberDTO()
+    {
+        return entityToDTO(userRegisteredMembershipWithPhoneNumber());
     }
 
     public static MembershipResponseDTO userNotRegisteredMembershipDTO()
