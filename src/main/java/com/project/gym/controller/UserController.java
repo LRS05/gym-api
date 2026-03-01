@@ -1,12 +1,14 @@
 package com.project.gym.controller;
 
 import com.project.gym.dto.*;
+import com.project.gym.service.JwtService;
 import com.project.gym.service.MembershipService;
 import com.project.gym.service.UserService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -23,6 +25,7 @@ public class UserController
 {
     private final UserService userService;
     private final MembershipService membershipService;
+    private final JwtService jwtService;
 
     @GetMapping
     public ResponseEntity<UserResponseDTO> getMe()
@@ -40,8 +43,13 @@ public class UserController
     public ResponseEntity<String> deleteMe(@Valid @RequestBody PasswordRequestDTO requestDTO)
     {
         log.debug("Attempting to delete own account");
+
         userService.deleteMe(requestDTO);
-        return ResponseEntity.ok("Account deleted successfully.");
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, jwtService.emptyCookie("access-token").toString())
+                .header(HttpHeaders.SET_COOKIE, jwtService.emptyCookie("refresh-token").toString())
+                .body("Account deleted successfully.");
     }
 
 
@@ -52,10 +60,10 @@ public class UserController
 
 
     @PostMapping("/memberships")
-    public ResponseEntity<MembershipResponseDTO> createMembership(Principal principal, @Valid @RequestBody MembershipRequestDTO requestDTO)
+    public ResponseEntity<MembershipResponseDTO> createMembership(@Valid @RequestBody MembershipRequestDTO requestDTO)
     {
-        log.debug("Attempting to create own membership with dni={}, type={}, payment method={}", principal.getName(), requestDTO.type(), requestDTO.paymentMethod());
-        return ResponseEntity.status(HttpStatus.CREATED).body(membershipService.createByDni(principal.getName(), requestDTO));
+        log.debug("Attempting to create own membership with dni={}, type={}, payment method={}", requestDTO.dni(), requestDTO.type(), requestDTO.paymentMethod());
+        return ResponseEntity.status(HttpStatus.CREATED).body(membershipService.create(requestDTO));
     }
 
     @GetMapping("/memberships")
