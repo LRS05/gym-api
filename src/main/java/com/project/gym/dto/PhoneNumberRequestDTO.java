@@ -9,7 +9,7 @@ import jakarta.validation.constraints.Pattern;
 public record PhoneNumberRequestDTO(
 
         @NotNull(message = "Country code is required.")
-        @JsonProperty("country-code")
+        @JsonProperty("country_code")
         CountryCode countryCode,
 
         @JsonProperty("phone_number")
