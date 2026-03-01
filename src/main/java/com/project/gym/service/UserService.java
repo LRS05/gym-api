@@ -59,7 +59,7 @@ public class UserService
 
         userRepository.save(user);
 
-        return "The phone number " + requestDTO.phoneNumber() + " has been successfully added to your account!";
+        return "The phone number " + phoneNumber + " has been successfully added to your account!";
     }
 
     private UserEntity findCurrentUserOrThrow()
