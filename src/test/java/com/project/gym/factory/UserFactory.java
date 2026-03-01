@@ -12,17 +12,24 @@ public class UserFactory
 {
     public static UserEntity userAdmin()
     {
-        return userBuilder(1, Role.ADMIN, "46622977", "Lorenzo", "Sarlo", null);
+        return userBuilder(1, Role.ADMIN, "46622977", "Lorenzo", "Sarlo");
     }
 
     public static UserEntity userStaff()
     {
-        return userBuilder(2, Role.STAFF, "12345678", "Matias", "Freccero", null);
+        return userBuilder(2, Role.STAFF, "12345678", "Matias", "Freccero");
     }
 
     public static UserEntity userUser()
     {
-        return userBuilder(3, Role.USER, "87654321", "Franco", "Cataldi", "542345511370");
+        return userBuilder(3, Role.USER, "87654321", "Franco", "Cataldi");
+    }
+
+    public static UserEntity userUserWithPhoneNumber()
+    {
+        UserEntity user = userUser();
+        user.setPhoneNumber("542345511370");
+        return user;
     }
 
     public static List<UserEntity> userList()
@@ -54,7 +61,7 @@ public class UserFactory
                 .toList();
     }
 
-    private static UserEntity userBuilder(int id, Role role, String dni, String firstName, String lastName, String phoneNumber)
+    private static UserEntity userBuilder(int id, Role role, String dni, String firstName, String lastName)
     {
         return UserEntity.builder()
                 .id(id)
@@ -64,7 +71,7 @@ public class UserFactory
                 .gender(Gender.MALE)
                 .firstName(firstName)
                 .lastName(lastName)
-                .phoneNumber(phoneNumber)
+                .phoneNumber(null)
                 .creationDate(LocalDate.of(2025, 1, 1))
                 .build();
     }
