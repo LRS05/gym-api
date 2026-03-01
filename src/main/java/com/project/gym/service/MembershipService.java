@@ -34,10 +34,10 @@ public class MembershipService
     private final MembershipMapper membershipMapper;
     private final CustomMetrics customMetrics;
 
-    public MembershipResponseDTO createByDni(String dni, MembershipRequestDTO requestDTO)
+    public MembershipResponseDTO create(MembershipRequestDTO requestDTO)
     {
         MembershipEntity savedMembership = membershipRepository.save(
-                buildMembership(dni, requestDTO)
+                buildMembership(requestDTO)
         );
 
         customMetrics.incrementMemberships();
@@ -45,7 +45,7 @@ public class MembershipService
 
         sendWhatsAppMessage(savedMembership.getUser(), savedMembership, MembershipMessageType.CREATED);
 
-        log.info("Created a new membership for the user with dni={}, type={} and payment method={}", dni, requestDTO.type(), requestDTO.paymentMethod());
+        log.info("Created a new membership for the user with dni={}, type={} and payment method={}", requestDTO.dni(), requestDTO.type(), requestDTO.paymentMethod());
         return membershipMapper.entityToDTO(savedMembership);
     }
 
@@ -67,7 +67,7 @@ public class MembershipService
         return membershipMapper.entityToDTO(updatedMembership);
     }
 
-    public void deleteMembershipById(int id)
+    public void deleteById(int id)
     {
         MembershipEntity membership = membershipRepository.findById(id)
                 .orElseThrow(() -> new MembershipNotFoundException("Membership not found."));
@@ -150,9 +150,9 @@ public class MembershipService
         membershipsAboutToExpire.forEach(m -> sendWhatsAppMessage(m.getUser(), m, MembershipMessageType.EXPIRING));
     }
 
-    private MembershipEntity buildMembership(String dni, MembershipRequestDTO requestDTO)
+    private MembershipEntity buildMembership(MembershipRequestDTO requestDTO)
     {
-        UserEntity user = userRepository.findByDni(dni).orElse(null);
+        UserEntity user = userRepository.findByDni(requestDTO.dni()).orElse(null);
         if (user != null && user.getRole() != Role.USER)
         {
             throw new InvalidMembershipAssignmentException("Only users with role USER can have a membership.");
@@ -161,7 +161,7 @@ public class MembershipService
         return MembershipEntity
                 .builder()
                 .user(user)
-                .dni(dni)
+                .dni(requestDTO.dni())
                 .status(MembershipStatus.ACTIVE)
                 .type(requestDTO.type())
                 .paymentMethod(requestDTO.paymentMethod())
