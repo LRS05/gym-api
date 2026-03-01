@@ -45,10 +45,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter
         }
 
         /*
-         * If the user does not send access token cookie (not authenticated) and the path is for authentication,
-         * skip the JWT filter.
+         * If the user does not send an access token cookie (is not authenticated) and the path is for authentication,
+         * or if the request is for logout, skip the JWT filter.
          */
-        if (isAuthPathWithoutToken(request))
+        if (isAuthPathWithoutToken(request) || request.getServletPath().equals("/api/v1/auth/logout"))
         {
             filterChain.doFilter(request, response);
             return;
@@ -72,7 +72,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter
         }
         catch (CookieNotFoundException | UsernameNotFoundException | InvalidTokenException e)
         {
-            sendErrorMessage(response, HttpStatus.UNAUTHORIZED, e.getMessage());
+            log.debug("Authentication failed: {}", e.getMessage());
+            sendErrorMessage(response, HttpStatus.UNAUTHORIZED, "Authentication required.");
             return;
         }
         filterChain.doFilter(request, response);
@@ -83,7 +84,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter
         String accessToken = jwtService.getTokenFromCookies(request.getCookies(), TokenType.ACCESS);
 
         UserEntity user =  userRepository.findByDni(jwtService.getSubject(accessToken))
-                .orElseThrow(() -> new UsernameNotFoundException("User not found."));
+                .orElseThrow(() -> new UsernameNotFoundException("User of the token not found."));
 
         if (!jwtService.isTokenValid(accessToken, user) || !jwtService.getTokenType(accessToken).equals("access"))
         {
