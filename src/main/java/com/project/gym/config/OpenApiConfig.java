@@ -29,7 +29,7 @@ public class OpenApiConfig
                         )
                 )
                 .servers(List.of(
-                        new Server().url("https://gym-api-4sn7.onrender.com").description("PROD Server")
+                        new Server().url("https://gym-api-4sn7.onrender.com").description("Production")
                 ))
                 .components(new Components()
                         .addSecuritySchemes("cookieAuth",
