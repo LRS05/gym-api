@@ -22,7 +22,7 @@ public class OpenApiConfig
                 .info(new Info()
                         .title("API GYM")
                         .version("1.0.0")
-                        .description("API for Client and Memberships Management of GYM")
+                        .description("API for clients and memberships management of GYM")
                         .contact(new Contact()
                                 .name("Lorenzo Sarlo")
                                 .email("lorenzosarlo73@gmail.com")
