@@ -45,10 +45,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter
         }
 
         /*
-         * If the user does not send an access token cookie (is not authenticated) and the path is for authentication,
-         * or if the request is for logout, skip the JWT filter.
+         * If the user is not authenticated (no access token cookie)
+         * and the request is for an authentication endpoint,
+         * skip this filter and continue the filter chain.
          */
-        if (isAuthPathWithoutToken(request) || request.getServletPath().equals("/api/v1/auth/logout"))
+        if (isAuthPathWithoutToken(request))
         {
             filterChain.doFilter(request, response);
             return;
@@ -103,8 +104,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter
 
     private boolean isAuthPathWithoutToken(HttpServletRequest request)
     {
-        return !jwtService.existsTokenCookie(TokenType.ACCESS, request.getCookies()) &&
-                request.getServletPath().startsWith("/api/v1/auth");
+        return !jwtService.existsTokenCookie(TokenType.ACCESS, request.getCookies())
+                && (request.getServletPath().equals("/api/v1/auth/login")
+                || request.getServletPath().equals("/api/v1/auth/register")
+                || request.getServletPath().equals("/api/v1/auth/refresh"));
     }
 
     private boolean isPublicPath(String path)
