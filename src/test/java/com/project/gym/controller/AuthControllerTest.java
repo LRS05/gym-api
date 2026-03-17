@@ -249,6 +249,32 @@ public class AuthControllerTest
     }
 
     @Test
+    void logout_whenUserIsAuthenticated_thenEmptyCookies()
+    {
+        UserEntity user = userRepository.findById(1)
+                        .orElse(null);
+
+        ResponseCookie accessTokenCookie = jwtService.generateAccessTokenCookie(user);
+
+        restTestClient.post()
+                .uri("/api/v1/auth/logout")
+                .cookie("access-token", accessTokenCookie.getValue())
+                .exchange()
+                .expectStatus()
+                .isOk();
+    }
+
+    @Test
+    void logout_whenUserIsNotAuthenticated_thenReturnUnauthorized()
+    {
+        restTestClient.post()
+                .uri("/api/v1/auth/logout")
+                .exchange()
+                .expectStatus()
+                .isUnauthorized();
+    }
+
+    @Test
     void accessAuthUrls_whenUserIsAuthenticated_thenReturnForbidden()
     {
         UserEntity user = userRepository.findById(1)
