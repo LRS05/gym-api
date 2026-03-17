@@ -158,8 +158,7 @@ public class MembershipService
             throw new InvalidMembershipAssignmentException("Only users with role USER can have a membership.");
         }
 
-        return MembershipEntity
-                .builder()
+        return MembershipEntity.builder()
                 .user(user)
                 .dni(requestDTO.dni())
                 .status(MembershipStatus.ACTIVE)
