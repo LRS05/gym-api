@@ -27,6 +27,7 @@ public class SecurityConfig
                         .requestMatchers(HttpMethod.POST, "/api/v1/whatsapp/send").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/actuator/**").hasRole("ADMIN")
+                        .requestMatchers("/api/v1/auth/logout").authenticated()
                         .requestMatchers( "/api/v1/auth/login", "/api/v1/auth/register", "/api/v1/auth/refresh").anonymous()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/staff/**").hasRole("STAFF")
