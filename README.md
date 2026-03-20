@@ -78,6 +78,8 @@ The project is built using the following technologies:
 - `/swagger-ui/index.html` → Swagger UI
 - `/actuator` → List of exposed actuator endpoints
 
+---
+
 ## 🐳 Deployment using Docker
 
 The application is dockerized with Docker Compose for easier deployment, including the Spring Boot API and MySQL database.
