@@ -14,7 +14,7 @@ The API built with Spring Boot / MySQL manages gym members and memberships with 
 - **Unit and Integration testing with JUNit, Mockito and RestTestClient**
 - **Docker containerization with Docker Compose**
 - **CI with GitHub Actions**
-- **CD Docker image build and push**
+- **CD with Docker image build and push**
 
 ## 🧰 Technologies Used
 
@@ -92,7 +92,7 @@ Docker and Docker Compose installed on your machine.
 
 1_ Clone the repository
 ```sh
-git clone https://github.com/github_username/gym-api.git  
+git clone https://github.com/LRS05/gym-api.git  
 cd gym-api  
 ```
 
