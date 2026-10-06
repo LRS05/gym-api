@@ -1,8 +1,8 @@
-# 🏋️ Gym Management API
+# Gym Management API
 
 The API built with Spring Boot / MySQL manages gym members and memberships with secure role-based access control.
 
-## 🚀 Features
+## Features
 
 - **User registration and authentication with JWT**
 - **Role-based access control (ADMIN, STAFF, USER)**
@@ -16,7 +16,7 @@ The API built with Spring Boot / MySQL manages gym members and memberships with 
 - **CI with GitHub Actions**
 - **CD with Docker image build and push**
 
-## 🧰 Technologies Used
+## Technologies Used
 
 The project is built using the following technologies:
 
@@ -39,9 +39,9 @@ The project is built using the following technologies:
 - **Maven**
 - **WhatsApp API**
 
-## 🔗 API Endpoints
+## API Endpoints
 
-### 🔐 Authentication
+### Authentication
 
 - `POST /api/v1/auth/register` → Register a new user
 - `POST /api/v1/auth/login` → Authenticate user and obtain JWT cookies
@@ -50,14 +50,14 @@ The project is built using the following technologies:
 
 ---
 
-### 👤 User
+### User
 
 - `/api/v1/user/**` → Manage personal user data
 - `/api/v1/user/memberships/**` → Access memberships
 
 ---
 
-### 🧑‍💼 Staff (limited access)
+### Staff (limited access)
 
 - `/api/v1/staff/users/**` → Manage users
 - `/api/v1/staff/users/dni/{dni}/memberships/**` → Manage user memberships
@@ -65,7 +65,7 @@ The project is built using the following technologies:
 
 ---
 
-### 🛠️ Admin (full access)
+### Admin (full access)
 
 - `/api/v1/admin/users/**` → Full CRUD on users and staff
 - `/api/v1/admin/users/dni/{dni}/memberships/**` → Full CRUD on user memberships
@@ -73,22 +73,22 @@ The project is built using the following technologies:
 
 ---
 
-### 📊 Metrics & Documentation
+### Metrics & Documentation
 
 - `/swagger-ui/index.html` → Swagger UI
 - `/actuator` → List of exposed actuator endpoints
 
 ---
 
-## 🐳 Deployment using Docker
+## Deployment using Docker
 
 The application is dockerized with Docker Compose for easier deployment, including the Spring Boot API and MySQL database.
 
-### ⚙️ Prerequisites
+### Prerequisites
 
 Docker and Docker Compose installed on your machine.
 
-### 📦 Instructions
+### Instructions
 
 1_ Clone the repository
 ```sh
