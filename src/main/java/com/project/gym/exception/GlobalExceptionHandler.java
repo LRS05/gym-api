@@ -131,7 +131,7 @@ public class GlobalExceptionHandler
     public ResponseEntity<ErrorResponseDTO> handleGenericException(Exception e)
     {
         log.error("Unexpected error occurred");
-        return sendErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected error occurred", ApiError.GENERIC);
+        return sendErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected error occurred.", ApiError.GENERIC);
     }
 
     private ResponseEntity<ErrorResponseDTO> sendErrorResponse(HttpStatus status, String message, ApiError error)

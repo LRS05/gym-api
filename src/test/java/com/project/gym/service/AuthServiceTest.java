@@ -201,7 +201,7 @@ public class AuthServiceTest
         when(jwtService.getSubject(refreshToken)).thenReturn(dni);
         when(userRepository.findByDni(dni)).thenReturn(Optional.of(user));
         when(jwtService.isTokenValid(refreshToken, user)).thenReturn(true);
-        when(jwtService.getTokenType(refreshToken)).thenReturn("refresh");
+        when(jwtService.getTokenType(refreshToken)).thenReturn("REFRESH");
         when(jwtService.generateAccessTokenCookie(user)).thenReturn(expectedAccessTokenCookie);
 
         ResponseCookie result = authService.refresh(httpServletRequest.getCookies());
@@ -277,7 +277,7 @@ public class AuthServiceTest
         when(jwtService.getTokenFromCookies(httpServletRequest.getCookies(), TokenType.REFRESH)).thenReturn(refreshToken);
         when(jwtService.getSubject(refreshToken)).thenReturn(dni);
         when(userRepository.findByDni(dni)).thenReturn(Optional.of(user));
-        when(jwtService.getTokenType(refreshToken)).thenReturn("refresh");
+        when(jwtService.getTokenType(refreshToken)).thenReturn("REFRESH");
         when(jwtService.isTokenValid(refreshToken, user)).thenReturn(false);
 
         // Then

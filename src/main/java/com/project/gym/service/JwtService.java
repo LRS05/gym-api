@@ -22,6 +22,9 @@ import java.util.Date;
 import java.util.UUID;
 
 @Service
+/*
+ * The @AllArgsConstructor and @NoArgsConstructor annotations are used for testing.
+ */
 @AllArgsConstructor
 @NoArgsConstructor
 public class JwtService
@@ -69,7 +72,7 @@ public class JwtService
         try
         {
             String tokenDni = getSubject(token);
-            return user.getDni().equals(tokenDni) && getExpiration(token).after(new Date());
+            return user.getDni().equals(tokenDni) && parseToken(token).getExpiration().after(new Date());
         }
         catch (JwtException e)
         {
@@ -92,12 +95,7 @@ public class JwtService
 
     public String getTokenType(String token)
     {
-        return parseToken(token).get("type", String.class).toLowerCase();
-    }
-
-    private Date getExpiration(String token)
-    {
-        return parseToken(token).getExpiration();
+        return parseToken(token).get("type", String.class);
     }
 
     private Claims parseToken(String token)

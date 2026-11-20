@@ -1,7 +1,6 @@
 package com.project.gym.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.project.gym.dto.whatsapp.WhatsAppMessageBodyDTO;
 import com.project.gym.dto.whatsapp.WhatsAppRequestMessageDTO;
 import com.project.gym.dto.whatsapp.WhatsAppRequestMessageTextDTO;
@@ -63,7 +62,7 @@ public class WhatsAppService
         );
     }
 
-    private void createResponseMessage(WhatsAppRequestMessageDTO message) throws JsonProcessingException
+    private void createResponseMessage(WhatsAppRequestMessageDTO message)
     {
         String response = restClient.post()
                 .uri("")

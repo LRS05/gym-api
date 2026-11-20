@@ -75,7 +75,8 @@ public class AuthService
         String refreshToken = jwtService.getTokenFromCookies(cookies, TokenType.REFRESH);
 
         UserEntity user = findUserByDniOrThrow(jwtService.getSubject(refreshToken));
-        if (!jwtService.getTokenType(refreshToken).equals("refresh") || !jwtService.isTokenValid(refreshToken, user))
+
+        if (!jwtService.getTokenType(refreshToken).equals("REFRESH") || !jwtService.isTokenValid(refreshToken, user))
         {
             throw new InvalidTokenException("Invalid or expired refresh token.");
         }

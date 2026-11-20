@@ -8,6 +8,7 @@ import com.project.gym.repository.UserRepository;
 import com.project.gym.service.JwtService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.NonNull;
@@ -49,7 +50,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter
          * and the request is for an authentication endpoint,
          * skip this filter and continue the filter chain.
          */
-        if (isAuthPathWithoutToken(request))
+        if (isAuthPathWithoutToken(request.getServletPath(), request.getCookies()))
         {
             filterChain.doFilter(request, response);
             return;
@@ -85,9 +86,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter
         String accessToken = jwtService.getTokenFromCookies(request.getCookies(), TokenType.ACCESS);
 
         UserEntity user =  userRepository.findByDni(jwtService.getSubject(accessToken))
-                .orElseThrow(() -> new UsernameNotFoundException("User of the token not found."));
+                .orElseThrow(() -> new UsernameNotFoundException("User owner of the token not found."));
 
-        if (!jwtService.isTokenValid(accessToken, user) || !jwtService.getTokenType(accessToken).equals("access"))
+        if (!jwtService.isTokenValid(accessToken, user) || !jwtService.getTokenType(accessToken).equals("ACCESS"))
         {
             throw new InvalidTokenException("Invalid or expired access token.");
         }
@@ -102,12 +103,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter
         SecurityContextHolder.getContext().setAuthentication(authenticationToken);
     }
 
-    private boolean isAuthPathWithoutToken(HttpServletRequest request)
+    private boolean isAuthPathWithoutToken(String path, Cookie[] cookies)
     {
-        return !jwtService.existsTokenCookie(TokenType.ACCESS, request.getCookies())
-                && (request.getServletPath().equals("/api/v1/auth/login")
-                || request.getServletPath().equals("/api/v1/auth/register")
-                || request.getServletPath().equals("/api/v1/auth/refresh"));
+        return (path.equals("/api/v1/auth/register") || path.equals("/api/v1/auth/login")
+                || path.equals("/api/v1/auth/refresh")) && !jwtService.existsTokenCookie(TokenType.ACCESS, cookies);
     }
 
     private boolean isPublicPath(String path)
